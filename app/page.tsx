@@ -1,4 +1,5 @@
 import Link from "next/link";
+import AnalyzeForm from "@/components/AnalyzeForm";
 
 export default function HomePage() {
     return (
@@ -43,16 +44,11 @@ export default function HomePage() {
                         You spend hours tailoring your CV, writing cover letters, and preparing for interviews — only to never hear back.
                         What if the job was never real?
                     </p>
-                    <div className="mb-6">
-                        <Link
-                            href="/analyze"
-                            className="inline-block px-10 py-4 text-lg gradient-purple rounded-lg font-bold hover:opacity-90 transition transform hover:scale-105"
-                        >
-                            Analyze a Job Posting — Free 👻
-                        </Link>
+                    <div className="max-w-2xl mx-auto mb-6">
+                        <AnalyzeForm />
                     </div>
                     <p className="text-sm text-text-secondary">
-                        No signup required • Free forever for 3 checks/month
+                        100% Secure • AI-Powered Detection • Results in Seconds
                     </p>
                 </div>
             </section>
