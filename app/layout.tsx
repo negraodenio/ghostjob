@@ -8,6 +8,10 @@ export const metadata: Metadata = {
     title: "GhostJob - Stop Applying to Ghost Jobs",
     description: "AI detects fake job postings, then crafts your perfect CV, cover letter, and interview prep — all from one job description.",
     keywords: ["ghost jobs", "job search", "AI resume", "CV builder", "cover letter"],
+    icons: {
+        icon: "/favicon.svg",
+        apple: "/favicon.svg",
+    }
 };
 
 export default function RootLayout({

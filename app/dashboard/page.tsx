@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 
+import SubscriptionStatus from '@/components/SubscriptionStatus';
+
 export default async function DashboardPage() {
     const supabase = await createClient();
 
@@ -46,6 +48,9 @@ export default async function DashboardPage() {
                         <Link href="/analyze" className="px-6 py-2 gradient-purple rounded-lg font-semibold hover:opacity-90 transition">
                             New Analysis
                         </Link>
+                        <Link href="/profile" className="text-text-secondary hover:text-white transition">
+                            Profile
+                        </Link>
                         <div className="text-text-secondary">{user.email}</div>
                     </div>
                 </div>
@@ -79,30 +84,10 @@ export default async function DashboardPage() {
                 </div>
 
                 {/* Subscription Status */}
-                <div className="bg-gradient-to-br from-primary/10 to-bg-card p-6 rounded-xl border border-primary mb-12">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <h3 className="text-2xl font-bold mb-2">
-                                {profile?.plan === 'free' ? '🆓 Free Plan' :
-                                    profile?.plan === 'pro' ? '⭐ Pro Plan' :
-                                        '💎 Premium Plan'}
-                            </h3>
-                            <p className="text-text-secondary">
-                                {profile?.plan === 'free'
-                                    ? `${(profile.analyses_count || 0)} / 3 analyses used this month`
-                                    : 'Unlimited analyses'}
-                            </p>
-                        </div>
-                        {profile?.plan === 'free' && (
-                            <Link
-                                href="/pricing"
-                                className="px-8 py-3 gradient-purple rounded-lg font-semibold hover:opacity-90 transition"
-                            >
-                                Upgrade to Pro
-                            </Link>
-                        )}
-                    </div>
-                </div>
+                <SubscriptionStatus
+                    plan={profile?.plan || 'free'}
+                    analysesCount={profile?.analyses_count || 0}
+                />
 
                 {/* Applications List */}
                 <div>
@@ -146,8 +131,8 @@ export default async function DashboardPage() {
                                         <div>
                                             <div className="text-sm text-text-secondary mb-1">Ghost Score</div>
                                             <div className={`text-2xl font-bold font-mono ${app.ghost_score >= 61 ? 'text-danger' :
-                                                    app.ghost_score >= 31 ? 'text-warning' :
-                                                        'text-success'
+                                                app.ghost_score >= 31 ? 'text-warning' :
+                                                    'text-success'
                                                 }`}>
                                                 {app.ghost_score}/100
                                             </div>

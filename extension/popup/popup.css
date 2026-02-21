@@ -1,0 +1,148 @@
+/* extension/popup/popup.css */
+body {
+    width: 350px;
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+    background-color: #0A0A0A;
+    color: #FFFFFF;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    background-color: #141414;
+    border-bottom: 1px solid #2d2d2d;
+}
+
+.logo {
+    font-size: 24px;
+    margin-right: 8px;
+}
+
+.title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #FFFFFF;
+}
+
+.content {
+    padding: 20px;
+    text-align: center;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.subtitle {
+    color: #9CA3AF;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+.btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Inter', sans-serif;
+}
+
+.btn.primary {
+    background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%);
+    color: white;
+}
+
+.btn.primary:hover {
+    opacity: 0.9;
+}
+
+.btn.secondary {
+    background-color: transparent;
+    color: #8B5CF6;
+    border: 1px solid #8B5CF6;
+    margin-top: 10px;
+}
+
+.btn.secondary:hover {
+    background-color: rgba(139, 92, 246, 0.1);
+}
+
+.hidden {
+    display: none !important;
+}
+
+.spinner {
+    border: 3px solid rgba(139, 92, 246, 0.3);
+    border-radius: 50%;
+    border-top: 3px solid #8B5CF6;
+    width: 24px;
+    height: 24px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 16px auto;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.score-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.score {
+    font-size: 48px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.score-label {
+    font-size: 12px;
+    color: #9CA3AF;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 4px;
+}
+
+#verdict {
+    font-size: 18px;
+    margin: 0 0 8px 0;
+}
+
+#headline {
+    color: #9CA3AF;
+    font-size: 14px;
+    margin: 0 0 20px 0;
+}
+
+.error-text {
+    color: #EF4444;
+    font-size: 14px;
+    margin-top: 10px;
+}
+
+.color-ghost {
+    color: #EF4444;
+}
+
+.color-sus {
+    color: #F59E0B;
+}
+
+.color-legit {
+    color: #10B981;
+}

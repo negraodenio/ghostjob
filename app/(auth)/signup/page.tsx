@@ -49,7 +49,22 @@ export default function SignupPage() {
                 }
             }
 
-            // Redirect to a success page or ask them to check email
+            // Redirect based on plan
+            const searchParams = new URLSearchParams(window.location.search);
+            const plan = searchParams.get('plan');
+
+            if (plan && ['pro', 'premium'].includes(plan)) {
+                const res = await fetch('/api/stripe/checkout', {
+                    method: 'POST',
+                    body: JSON.stringify({ plan }),
+                });
+                const { url } = await res.json();
+                if (url) {
+                    window.location.href = url;
+                    return;
+                }
+            }
+
             router.push('/analyze?signup=success');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to sign up');

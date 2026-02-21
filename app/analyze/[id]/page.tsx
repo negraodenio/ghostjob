@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import html2canvas from 'html2canvas';
 
 interface RedFlag {
     title: string;
@@ -44,7 +45,45 @@ export default function AnalysisResultPage() {
 
     const [application, setApplication] = useState<Application | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isSharing, setIsSharing] = useState(false);
+    const [isPublishing, setIsPublishing] = useState(false);
     const [activeTab, setActiveTab] = useState<'red' | 'green' | 'quality'>('red');
+    const reportRef = useRef<HTMLDivElement>(null);
+
+    const handleShare = async () => {
+        if (!reportRef.current) return;
+        setIsSharing(true);
+        try {
+            const canvas = await html2canvas(reportRef.current, { backgroundColor: '#0A0A0A', scale: 2 });
+            const dataUrl = canvas.toDataURL('image/png');
+
+            const link = document.createElement('a');
+            link.download = `GhostJob-${application?.company_name || 'Report'}.png`;
+            link.href = dataUrl;
+            link.click();
+        } catch (error) {
+            console.error('Failed to generate image', error);
+        } finally {
+            setIsSharing(false);
+        }
+    };
+
+    const handlePublish = async () => {
+        if (!application) return;
+        setIsPublishing(true);
+        try {
+            const res = await fetch(`/api/applications/${application.id}/publish`, { method: 'POST' });
+            if (res.ok) {
+                alert('Published to Ghost Wall successfully! Thousands of job seekers can now see it.');
+            } else {
+                alert('Failed to publish. Ensure you are logged in.');
+            }
+        } catch (error) {
+            console.error('Failed to publish', error);
+        } finally {
+            setIsPublishing(false);
+        }
+    };
 
     useEffect(() => {
         const fetchAnalysis = async () => {
@@ -134,7 +173,7 @@ export default function AnalysisResultPage() {
             {/* Main Content */}
             <div className="container mx-auto px-6 py-12 max-w-5xl">
                 {/* HERO SECTION */}
-                <div className={`text-center mb-16 p-8 md:p-12 rounded-3xl border-2 ${borderColor} bg-gradient-to-br ${bgGradient} relative overflow-hidden`}>
+                <div ref={reportRef} className={`text-center mb-16 p-8 md:p-12 rounded-3xl border-2 ${borderColor} bg-gradient-to-br ${bgGradient} relative overflow-hidden`} style={{ backgroundColor: '#0A0A0A' }}>
                     {/* Background Noise */}
                     <div className="absolute inset-0 opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
 
@@ -188,15 +227,43 @@ export default function AnalysisResultPage() {
                         )}
 
                         {/* Action Buttons */}
-                        <div className="flex flex-wrap justify-center gap-4 mt-8">
-                            <button className="px-8 py-3 bg-bg-card/80 border border-gray-700 rounded-xl font-semibold hover:border-primary transition flex items-center gap-2 backdrop-blur-sm">
-                                🔗 Share Result
-                            </button>
-                            {isGhost && (
-                                <button className="px-8 py-3 bg-red-900/30 border border-red-500/50 text-red-400 rounded-xl font-semibold hover:bg-red-900/50 transition flex items-center gap-2 backdrop-blur-sm">
-                                    💀 Report to Ghost Wall
+                        <div className="flex flex-col items-center gap-4 mt-8" data-html2canvas-ignore>
+                            <div className="flex flex-wrap justify-center gap-4">
+                                <button
+                                    onClick={handleShare}
+                                    disabled={isSharing}
+                                    className="px-8 py-3 bg-bg-card/80 border border-gray-700 rounded-xl font-semibold hover:border-primary transition flex items-center gap-2 backdrop-blur-sm"
+                                >
+                                    {isSharing ? '⏳ Generating Card...' : '🔗 Download Share Card'}
                                 </button>
-                            )}
+                                {isGhost && (
+                                    <button
+                                        onClick={handlePublish}
+                                        disabled={isPublishing}
+                                        className="px-8 py-3 bg-red-900/30 border border-red-500/50 text-red-400 rounded-xl font-semibold hover:bg-red-900/50 transition flex items-center gap-2 backdrop-blur-sm"
+                                    >
+                                        {isPublishing ? '⏳ Publishing...' : '💀 Report to Ghost Wall'}
+                                    </button>
+                                )}
+                            </div>
+                            <div className="flex gap-6 mt-2">
+                                <a
+                                    href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`I just caught a Ghost Job with a ${application.ghost_score}% score using GhostJob! Stop wasting time building CVs for fake jobs. 👻 \n\nCheck yours at:`)}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-text-secondary hover:text-white transition font-semibold text-sm"
+                                >
+                                    🐦 Share on X (Earn +1 Check)
+                                </a>
+                                <a
+                                    href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent('https://ghostjob.app')}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-text-secondary hover:text-white transition font-semibold text-sm"
+                                >
+                                    💼 Share on LinkedIn (Earn +1 Check)
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>

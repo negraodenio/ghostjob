@@ -120,36 +120,28 @@ export async function POST(request: NextRequest) {
         // Check if we need to fetch from URL
         if (finalJobDescription.trim().length < 200 && job_url) {
             try {
-                console.log('[API] Fetching job description from URL:', job_url);
-                const response = await fetch(job_url, {
+                console.log('[API] Fetching job description from URL using Jina:', job_url);
+                const response = await fetch(`https://r.jina.ai/${job_url}`, {
                     headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                        'Accept': 'text/plain', // Return markdown text
                     },
-                    signal: AbortSignal.timeout(10000) // 10s timeout
+                    signal: AbortSignal.timeout(15000) // 15s timeout
                 });
 
                 if (response.ok) {
-                    const html = await response.text();
+                    const text = await response.text();
 
-                    // Basic HTML stripping
-                    const text = html
-                        .replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gim, "")
-                        .replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gim, "")
-                        .replace(/<[^>]+>/g, "\n")
-                        .replace(/\s+/g, " ")
-                        .trim();
-
-                    if (text.length > 200) {
+                    if (text && text.length > 200) {
                         finalJobDescription = text.substring(0, 15000); // Limit to 15k chars
-                        console.log('[API] Successfully extracted text from URL. Length:', finalJobDescription.length);
+                        console.log('[API] Successfully extracted text with Jina. Length:', finalJobDescription.length);
                     } else {
-                        console.warn('[API] Extracted text from URL was too short.');
+                        console.warn('[API] Extracted text from Jina was too short.');
                     }
                 } else {
-                    console.warn(`[API] Failed to fetch URL: ${response.status}`);
+                    console.warn(`[API] Failed to fetch URL with Jina: ${response.status}`);
                 }
             } catch (error) {
-                console.error('[API] URL Fetch Error:', error);
+                console.error('[API] Jina URL Fetch Error:', error);
             }
         }
 

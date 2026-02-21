@@ -1,0 +1,20 @@
+{
+    "manifest_version": 3,
+    "name": "GhostJob - A.I. Job Verifier",
+    "version": "1.0.0",
+    "description": "Stop applying to ghost jobs. Get AI-powered job analysis directly on LinkedIn, Indeed, and more.",
+    "action": {
+        "default_popup": "popup/popup.html"
+    },
+    "permissions": [
+        "activeTab",
+        "scripting",
+        "storage"
+    ],
+    "host_permissions": [
+        "https://*.linkedin.com/*",
+        "https://*.indeed.com/*",
+        "https://*.glassdoor.com/*",
+        "http://localhost:3000/*"
+    ]
+}

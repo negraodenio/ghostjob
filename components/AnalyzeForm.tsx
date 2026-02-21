@@ -15,6 +15,18 @@ export default function AnalyzeForm({ className = '' }: AnalyzeFormProps) {
     const [error, setError] = useState('');
     const [loadingStep, setLoadingStep] = useState(0);
 
+    const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const val = e.target.value;
+
+        // Auto-detect if user pasted a URL directly in the text area
+        if (val.trim().startsWith('http') && !val.includes(' ') && val.length < 500) {
+            setJobUrl(val.trim());
+            setJobDescription('');
+        } else {
+            setJobDescription(val);
+        }
+    };
+
     const loadingSteps = [
         '🔍 Reading job description...',
         '👻 Checking for ghost signals...',
@@ -107,15 +119,15 @@ export default function AnalyzeForm({ className = '' }: AnalyzeFormProps) {
                 </label>
                 <textarea
                     value={jobDescription}
-                    onChange={(e) => setJobDescription(e.target.value)}
+                    onChange={handleDescriptionChange}
                     placeholder="Paste the full job description here (minimum 200 characters)..."
                     className="w-full h-48 px-4 py-3 bg-bg-primary/50 border border-gray-800 rounded-xl text-text-primary placeholder-text-secondary focus:outline-none focus:border-primary/50 transition resize-none"
                     maxLength={10000}
                 />
                 <div className="flex justify-between mt-2 text-xs">
                     <span className="text-text-secondary">{jobDescription.length.toLocaleString()} / 10,000 characters</span>
-                    <span className={jobDescription.length >= 200 ? 'text-success' : 'text-warning font-medium'}>
-                        {jobDescription.length >= 200 ? '✓ Ready to analyze' : `Need ${200 - jobDescription.length} more characters`}
+                    <span className={jobDescription.length >= 200 || jobUrl.length > 0 ? 'text-success' : 'text-warning font-medium'}>
+                        {jobDescription.length >= 200 || jobUrl.length > 0 ? '✓ Ready to analyze' : `Need ${200 - jobDescription.length} more characters`}
                     </span>
                 </div>
             </div>
