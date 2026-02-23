@@ -66,10 +66,22 @@ export default function AnalyzeForm({ className = '' }: AnalyzeFormProps) {
                 }),
             });
 
+            // Handle non-JSON responses (like HTML error pages from Vercel)
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                console.error('[AnalyzeForm] Received non-JSON response:', text);
+
+                if (response.status === 504) {
+                    throw new Error('O servidor demorou muito para responder (Timeout). Tente colar apenas a descrição da vaga em vez do link.');
+                }
+                throw new Error(`Erro do servidor (${response.status}). Tente novamente mais tarde.`);
+            }
+
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || 'Analysis failed');
+                throw new Error(data.error || 'A análise falhou. Tente novamente.');
             }
 
             clearInterval(stepInterval);
@@ -81,7 +93,8 @@ export default function AnalyzeForm({ className = '' }: AnalyzeFormProps) {
             }, 500);
         } catch (err) {
             clearInterval(stepInterval);
-            setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+            console.error('[AnalyzeForm] Error:', err);
+            setError(err instanceof Error ? err.message : 'Ocorreu um erro inesperado. Tente novamente.');
             setIsLoading(false);
         }
     };

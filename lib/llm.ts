@@ -46,7 +46,7 @@ export class SiliconFlowProvider implements LLMProvider {
                 temperature: options?.temperature ?? 0.7,
                 max_tokens: options?.maxTokens ?? 4000,
             }),
-            signal: AbortSignal.timeout(30000), // 30s timeout
+            signal: AbortSignal.timeout(8000), // Reduced to 8s for Vercel Hobby compatibility
         });
 
         if (!response.ok) {
@@ -88,7 +88,7 @@ export class OpenRouterProvider implements LLMProvider {
                 temperature: options?.temperature ?? 0.7,
                 max_tokens: options?.maxTokens ?? 4000,
             }),
-            signal: AbortSignal.timeout(30000), // 30s timeout
+            signal: AbortSignal.timeout(8000), // Reduced to 8s for Vercel Hobby compatibility
         });
 
         if (!response.ok) {
@@ -113,19 +113,19 @@ export async function getLLMResponse(
     let lastError: Error | null = null;
 
     for (const provider of providers) {
-        // Try each provider with exponential backoff
-        for (let attempt = 0; attempt < 3; attempt++) {
+        // Try each provider with backoff
+        for (let attempt = 0; attempt < 2; attempt++) {
             try {
-                console.log(`[LLM] Attempting ${provider.getName()}, attempt ${attempt + 1}/3`);
+                console.log(`[LLM] Attempting ${provider.getName()}, attempt ${attempt + 1}/2`);
                 const response = await provider.chat(messages, options);
                 console.log(`[LLM] Success with ${provider.getName()}`);
                 return response;
             } catch (error) {
                 lastError = error as Error;
-                console.error(`[LLM] Error with ${provider.getName()}, attempt ${attempt + 1}/3:`, error);
+                console.error(`[LLM] Error with ${provider.getName()}, attempt ${attempt + 1}/2:`, error);
 
-                // Exponential backoff: 1s, 2s, 4s
-                if (attempt < 2) {
+                // Exponential backoff
+                if (attempt < 1) {
                     const delay = Math.pow(2, attempt) * 1000;
                     console.log(`[LLM] Retrying in ${delay}ms...`);
                     await new Promise(resolve => setTimeout(resolve, delay));

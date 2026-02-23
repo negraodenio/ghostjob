@@ -386,12 +386,15 @@ export async function POST(request: NextRequest) {
         // Check if we need to fetch from URL
         if (finalJobDescription.trim().length < 200 && job_url) {
             try {
+                // Encode the URL to handle special characters correctly
+                const encodedUrl = encodeURIComponent(job_url);
                 console.log('[API] Fetching job description from URL using Jina:', job_url);
-                const response = await fetch(`https://r.jina.ai/${job_url}`, {
+
+                const response = await fetch(`https://r.jina.ai/${encodedUrl}`, {
                     headers: {
                         'Accept': 'text/plain', // Return markdown text
                     },
-                    signal: AbortSignal.timeout(15000) // 15s timeout
+                    signal: AbortSignal.timeout(10000) // Reduced to 10s to give room for LLM
                 });
 
                 if (response.ok) {
@@ -404,7 +407,7 @@ export async function POST(request: NextRequest) {
                         console.warn('[API] Extracted text from Jina was too short.');
                     }
                 } else {
-                    console.warn(`[API] Failed to fetch URL with Jina: ${response.status}`);
+                    console.warn(`[API] Failed to fetch URL with Jina: ${response.status} ${response.statusText}`);
                 }
             } catch (error) {
                 console.error('[API] Jina URL Fetch Error:', error);
