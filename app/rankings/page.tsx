@@ -40,7 +40,7 @@ export default function RankingsPage() {
         };
 
         fetchRankings();
-    }, []);
+    }, [supabase]);
 
     return (
         <div className="min-h-screen bg-bg-primary text-text-primary">

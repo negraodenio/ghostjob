@@ -25,7 +25,6 @@ interface JobRow {
 export default async function HomePage() {
     let legitStats: CorrelationRow | null = null;
     let ghostStats: CorrelationRow | null = null;
-    let topCompanies: CompanyRow[] | null = null;
     let susJobs: JobRow[] | null = null;
 
     try {
@@ -39,13 +38,12 @@ export default async function HomePage() {
         legitStats = (correlation as CorrelationRow[])?.find((c) => c.score_category === 'legit') || null;
         ghostStats = (correlation as CorrelationRow[])?.find((c) => c.score_category === 'certified_ghost') || null;
 
-        // 2. Fetch Top Companies
-        const { data: companies } = await supabase
+        // 2. Fetch Top Companies (Calculated but unused in this view)
+        await supabase
             .from('view_company_leaderboard')
             .select('*')
             .order('hiring_integrity_score', { ascending: false })
             .limit(3);
-        topCompanies = companies;
 
         // 3. Fetch Recent Suspicious Jobs
         const { data: jobs } = await supabase

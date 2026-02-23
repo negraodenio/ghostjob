@@ -88,7 +88,7 @@ export default function CoverLetterPage() {
             }
         };
         checkSavedInfo();
-    }, [id]); // Only run on mount or ID change
+    }, [id, generateLetter, tone]); // Only run on mount or ID change
 
     const handleFormSubmit = (data: UserInfo) => {
         setIsFormOpen(false);

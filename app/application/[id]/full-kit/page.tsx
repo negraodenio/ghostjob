@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import UserInfoForm from '@/components/UserInfoForm';
@@ -31,29 +31,7 @@ export default function FullKitPage() {
 
 
 
-    // Check for saved user info
-    useEffect(() => {
-        try {
-            const saved = localStorage.getItem('ghostjob_user_info');
-            if (saved) {
-                const info = JSON.parse(saved) as UserInfo;
-                setIsFormOpen(false);
-                generateAll(info);
-            } else {
-                setIsFormOpen(true);
-            }
-        } catch (e) {
-            console.error('Failed to access localStorage:', e);
-            setIsFormOpen(true);
-        }
-    }, [id]);
-
-    const handleFormSubmit = async (userInfo: UserInfo) => {
-        setIsFormOpen(false);
-        generateAll(userInfo);
-    };
-
-    const generateAll = async (userInfo: UserInfo) => {
+    const generateAll = useCallback(async (userInfo: UserInfo) => {
         // 1. Generate CV
         setProgress(prev => ({ ...prev, cv: 'loading' }));
         try {
@@ -105,7 +83,29 @@ export default function FullKitPage() {
             console.error(e);
             setProgress(prev => ({ ...prev, interview: 'error' }));
         }
+    }, [id]);
+
+    const handleFormSubmit = async (userInfo: UserInfo) => {
+        setIsFormOpen(false);
+        generateAll(userInfo);
     };
+
+    // Check for saved user info
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem('ghostjob_user_info');
+            if (saved) {
+                const info = JSON.parse(saved) as UserInfo;
+                setIsFormOpen(false);
+                generateAll(info);
+            } else {
+                setIsFormOpen(true);
+            }
+        } catch (e) {
+            console.error('Failed to access localStorage:', e);
+            setIsFormOpen(true);
+        }
+    }, [id, generateAll]);
 
     // Helper to download simplistic text files for now (PDF generation logic is complex to duplicate here without components)
     // Or we link to the individual pages? The user wanted "Download PDF" buttons.

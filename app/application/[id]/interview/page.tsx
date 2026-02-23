@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import html2canvas from 'html2canvas';
@@ -65,14 +65,7 @@ export default function InterviewPrepPage() {
 
     const prepRef = useRef<HTMLDivElement>(null);
 
-    // Auto-generate on mount if not already generated
-    useEffect(() => {
-        if (!prepData) {
-            generatePrep();
-        }
-    }, [id]); // Trigger on ID change
-
-    const generatePrep = async () => {
+    const generatePrep = useCallback(async () => {
         setIsLoading(true);
         // Reset expanded state on new generation
         setExpandedQuestions({});
@@ -97,7 +90,14 @@ export default function InterviewPrepPage() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [id, difficulty]);
+
+    // Auto-generate on mount if not already generated
+    useEffect(() => {
+        if (!prepData) {
+            generatePrep();
+        }
+    }, [id, generatePrep, prepData]); // Trigger on ID change
 
     const toggleAccordion = (sectionIdx: number, questionIdx: number) => {
         const key = `${sectionIdx}-${questionIdx}`;

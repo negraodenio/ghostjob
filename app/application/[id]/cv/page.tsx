@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import UserInfoForm from '@/components/UserInfoForm';
@@ -52,25 +52,7 @@ export default function CVPage() {
     const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
     const cvRef = useRef<HTMLDivElement>(null);
 
-    // Safe localStorage access & auto-generation
-    useEffect(() => {
-        try {
-            const saved = localStorage.getItem('ghostjob_user_info');
-            if (saved) {
-                const info = JSON.parse(saved);
-                setUserInfo(info);
-                setIsFormOpen(false);
-                handleFormSubmit(info);
-            } else {
-                setIsFormOpen(true);
-            }
-        } catch (e) {
-            console.error('Failed to access localStorage:', e);
-            setIsFormOpen(true);
-        }
-    }, [id]); // Only run on mount or ID change
-
-    const handleFormSubmit = async (userInfo: UserInfo) => {
+    const handleFormSubmit = useCallback(async (userInfo: UserInfo) => {
         setIsFormOpen(false);
         setIsLoading(true);
 
@@ -95,7 +77,25 @@ export default function CVPage() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [id]);
+
+    // Safe localStorage access & auto-generation
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem('ghostjob_user_info');
+            if (saved) {
+                const info = JSON.parse(saved);
+                setUserInfo(info);
+                setIsFormOpen(false);
+                handleFormSubmit(info);
+            } else {
+                setIsFormOpen(true);
+            }
+        } catch (e) {
+            console.error('Failed to access localStorage:', e);
+            setIsFormOpen(true);
+        }
+    }, [id, handleFormSubmit]); // Only run on mount or ID change
 
     const handleDownloadPDF = async () => {
         if (!cvRef.current) return;

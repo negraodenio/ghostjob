@@ -67,7 +67,7 @@ export default function CompanyDashboard({ params }: { params: { slug: string } 
         };
 
         fetchCompanyAndJobs();
-    }, [params.slug]);
+    }, [params.slug, supabase]);
 
     if (isLoading) return (
         <div className="min-h-screen bg-bg-primary flex items-center justify-center">

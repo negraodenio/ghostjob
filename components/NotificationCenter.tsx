@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 
@@ -19,7 +19,7 @@ export default function NotificationCenter() {
     const [isOpen, setIsOpen] = useState(false);
     const supabase = createClient();
 
-    const fetchNotifications = async () => {
+    const fetchNotifications = useCallback(async () => {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) return;
 
@@ -34,7 +34,7 @@ export default function NotificationCenter() {
             setNotifications(data);
             setUnreadCount(data.filter(n => !n.is_read).length);
         }
-    };
+    }, [supabase]);
 
     useEffect(() => {
         fetchNotifications();
@@ -53,7 +53,7 @@ export default function NotificationCenter() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, []);
+    }, [supabase, fetchNotifications]);
 
     const markAsRead = async (id: string) => {
         const { error } = await supabase
