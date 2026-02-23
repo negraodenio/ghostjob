@@ -15,6 +15,7 @@
         "https://*.linkedin.com/*",
         "https://*.indeed.com/*",
         "https://*.glassdoor.com/*",
-        "http://localhost:3000/*"
+        "http://localhost:3000/*",
+        "https://www.ghostproof.cv/*"
     ]
 }

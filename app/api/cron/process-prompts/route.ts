@@ -1,7 +1,15 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
-export async function GET(request: Request) {
+interface PromptApplication {
+    user_id: string;
+    job?: {
+        job_title?: string;
+        company?: { name?: string };
+    };
+}
+
+export async function GET() {
     const supabase = createAdminClient();
 
     try {
@@ -35,7 +43,7 @@ export async function GET(request: Request) {
         const notificationResults = [];
 
         for (const prompt of prompts) {
-            const app: any = prompt.applications;
+            const app = prompt.applications as unknown as PromptApplication;
             if (!app) continue;
 
             const jobName = app.job?.job_title || 'a recent application';
@@ -85,8 +93,9 @@ export async function GET(request: Request) {
             results: notificationResults
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Internal server error';
         console.error('Error processing prompts:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

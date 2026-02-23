@@ -2,11 +2,31 @@ import Link from "next/link";
 import AnalyzeForm from "@/components/AnalyzeForm";
 import { createClient } from "@/lib/supabase/server";
 
+interface CorrelationRow {
+    score_category: string;
+    response_rate_pct: number;
+    avg_days_to_response: number;
+}
+
+interface CompanyRow {
+    name: string;
+    hiring_integrity_score?: number;
+}
+
+interface JobRow {
+    id: string;
+    job_title: string;
+    ghost_score: number;
+    ghost_verdict: string;
+    created_at: string;
+    company?: { name: string }[] | null;
+}
+
 export default async function HomePage() {
-    let legitStats: any = null;
-    let ghostStats: any = null;
-    let topCompanies: any[] | null = null;
-    let susJobs: any[] | null = null;
+    let legitStats: CorrelationRow | null = null;
+    let ghostStats: CorrelationRow | null = null;
+    let topCompanies: CompanyRow[] | null = null;
+    let susJobs: JobRow[] | null = null;
 
     try {
         const supabase = await createClient();
@@ -16,8 +36,8 @@ export default async function HomePage() {
             .from('view_ghost_score_correlation')
             .select('*');
 
-        legitStats = (correlation as any[])?.find((c: any) => c.score_category === 'legit') || null;
-        ghostStats = (correlation as any[])?.find((c: any) => c.score_category === 'certified_ghost') || null;
+        legitStats = (correlation as CorrelationRow[])?.find((c) => c.score_category === 'legit') || null;
+        ghostStats = (correlation as CorrelationRow[])?.find((c) => c.score_category === 'certified_ghost') || null;
 
         // 2. Fetch Top Companies
         const { data: companies } = await supabase
@@ -102,7 +122,7 @@ export default async function HomePage() {
                         <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5">
                             <div className="text-text-secondary text-[10px] font-black uppercase tracking-[0.2em] mb-3">Market Leader</div>
                             <div className="text-xl font-black mb-1 text-success">
-                                {topCompanies?.[0]?.name || 'Fetching...'}
+                                Empresa 1
                             </div>
                             <p className="text-xs text-text-secondary">Most responsive company this week.</p>
                         </div>
@@ -315,7 +335,7 @@ export default async function HomePage() {
                         <div className="bg-bg-card p-6 rounded-2xl border border-white/5">
                             <h3 className="font-semibold text-sm text-text-secondary mb-1">Top Integrity</h3>
                             <div className="text-xl font-black text-primary truncate">
-                                {topCompanies?.[0]?.name || 'Fetching...'}
+                                Empresa 1
                             </div>
                             <p className="text-text-secondary text-[10px] mt-1 uppercase tracking-wide">Market leader</p>
                         </div>
@@ -427,13 +447,13 @@ export default async function HomePage() {
                                 <p className="text-text-secondary">Ghost Wall data incoming — real ghost jobs will appear here soon.</p>
                             </div>
                         ) : (
-                            susJobs.map(job => (
+                            susJobs.map((job, index) => (
                                 <div key={job.id} className="bg-bg-primary rounded-xl border border-white/5 overflow-hidden hover:border-white/10 transition">
                                     <div className="p-6">
                                         <div className="flex justify-between items-start mb-4">
                                             <div>
                                                 <h3 className="font-bold">{job.job_title}</h3>
-                                                <p className="text-text-secondary text-sm">{(job as any).company?.name || 'Unknown'}</p>
+                                                <p className="text-text-secondary text-sm">Empresa {index + 1}</p>
                                             </div>
                                             <span className={`text-[10px] font-bold px-2 py-1 rounded ${job.ghost_verdict === 'certified_ghost' ? 'bg-danger/10 text-danger' : 'bg-warning/10 text-warning'}`}>
                                                 {job.ghost_verdict === 'certified_ghost' ? 'Certified Ghost' : 'Suspicious'}

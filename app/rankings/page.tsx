@@ -42,13 +42,6 @@ export default function RankingsPage() {
         fetchRankings();
     }, []);
 
-    const getStatus = (grade: string) => {
-        if (grade === 'A' || grade === 'B') return { label: 'Transparent', class: 'bg-success/20 text-success border-success/30' };
-        if (grade === 'C') return { label: 'Good', class: 'bg-primary/20 text-primary border-primary/30' };
-        if (grade === 'D') return { label: 'Ghost', class: 'bg-warning/20 text-warning border-warning/30' };
-        return { label: 'Phantom', class: 'bg-danger/20 text-danger border-danger/30' };
-    };
-
     return (
         <div className="min-h-screen bg-bg-primary text-text-primary">
 
@@ -87,14 +80,13 @@ export default function RankingsPage() {
                                 </thead>
                                 <tbody className="divide-y divide-gray-800">
                                     {companies.map((company, idx) => {
-                                        const status = getStatus(company.hiring_integrity_grade);
                                         return (
                                             <tr key={company.id} className="hover:bg-white/5 transition group">
                                                 <td className="px-8 py-6">
                                                     <div className="flex items-center space-x-4">
                                                         <span className="text-lg font-mono text-text-secondary w-6">#{idx + 1}</span>
                                                         <Link href={`/company/${company.normalized_name}`} className="font-bold text-lg group-hover:text-primary transition underline-offset-4 hover:underline">
-                                                            {company.name}
+                                                            Empresa {idx + 1}
                                                         </Link>
                                                     </div>
                                                 </td>

@@ -1,0 +1,74 @@
+﻿
+> ghostjob@0.1.0 build
+> next build
+
+  Ôû▓ Next.js 14.2.35
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ Ô£ô Compiled successfully
+   Linting and checking validity of types ...
+
+./app/application/[id]/cover-letter/page.tsx
+91:8  Warning: React Hook useEffect has missing dependencies: 'generateLetter' and 'tone'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./app/application/[id]/cv/page.tsx
+71:8  Warning: React Hook useEffect has a missing dependency: 'handleFormSubmit'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./app/application/[id]/full-kit/page.tsx
+49:8  Warning: React Hook useEffect has a missing dependency: 'generateAll'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./app/application/[id]/interview/page.tsx
+73:8  Warning: React Hook useEffect has missing dependencies: 'generatePrep' and 'prepData'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./app/company/[slug]/page.tsx
+70:8  Warning: React Hook useEffect has a missing dependency: 'supabase'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./app/layout.tsx
+28:17  Warning: Custom fonts not added in `pages/_document.js` will only load for a single page. This is discouraged. See: https://nextjs.org/docs/messages/no-page-custom-font  @next/next/no-page-custom-font
+
+./app/rankings/page.tsx
+43:8  Warning: React Hook useEffect has a missing dependency: 'supabase'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/NotificationCenter.tsx
+56:8  Warning: React Hook useEffect has missing dependencies: 'fetchNotifications' and 'supabase'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules
+   Collecting page data ...
+node.exe : Error: Neither apiKey nor config.authenticator provided
+At C:\Program Files\nodejs\npm.ps1:29 char:3
++   & $NODE_EXE $NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Error: Neither ...icator provided 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    at r._setAuthenticator 
+(C:\Users\denio\Documents\Denio\GhostJob\.next\server\chunks\9777.js:1:88182)
+    at new r 
+(C:\Users\denio\Documents\Denio\GhostJob\.next\server\chunks\9777.js:1:82797)
+    at 69206 (C:\Users\denio\Documents\Denio\GhostJob\.next\server\app\api\stri
+pe\webhook\route.js:1:3107)
+    at t 
+(C:\Users\denio\Documents\Denio\GhostJob\.next\server\webpack-runtime.js:1:128)
+    at 64038 (C:\Users\denio\Documents\Denio\GhostJob\.next\server\app\api\stri
+pe\webhook\route.js:1:996)
+    at t 
+(C:\Users\denio\Documents\Denio\GhostJob\.next\server\webpack-runtime.js:1:128)
+    at r (C:\Users\denio\Documents\Denio\GhostJob\.next\server\app\api\stripe\w
+ebhook\route.js:1:10268)
+    at C:\Users\denio\Documents\Denio\GhostJob\.next\server\app\api\stripe\webh
+ook\route.js:1:10311
+    at t.X (C:\Users\denio\Documents\Denio\GhostJob\.next\server\webpack-runtim
+e.js:1:1206)
+    at C:\Users\denio\Documents\Denio\GhostJob\.next\server\app\api\stripe\webh
+ook\route.js:1:10281
+
+> Build error occurred
+Error: Failed to collect page data for /api/stripe/webhook
+    at C:\Users\denio\Documents\Denio\GhostJob\node_modules\next\dist\build\uti
+ls.js:1269:15
+    at process.processTicksAndRejections 
+(node:internal/process/task_queues:105:5) {
+  type: 'Error'
+}

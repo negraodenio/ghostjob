@@ -4,6 +4,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { resend } from '@/lib/resend';
 import { FollowUpEmail } from '@/components/emails/FollowUpEmail';
 
+export const dynamic = 'force-dynamic';
+
 // This endpoint should be secured via a secret token in production
 export async function GET(request: NextRequest) {
     const authHeader = request.headers.get('authorization');

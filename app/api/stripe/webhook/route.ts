@@ -4,9 +4,15 @@ import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import Stripe from 'stripe';
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+    if (!webhookSecret) {
+        return NextResponse.json({ error: 'STRIPE_WEBHOOK_SECRET not configured' }, { status: 500 });
+    }
+
     const body = await req.text();
     const signature = headers().get('stripe-signature')!;
 
@@ -14,9 +20,10 @@ export async function POST(req: Request) {
 
     try {
         event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-    } catch (err: any) {
-        console.error(`Webhook signature verification failed: ${err.message}`);
-        return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        console.error(`Webhook signature verification failed: ${message}`);
+        return NextResponse.json({ error: `Webhook Error: ${message}` }, { status: 400 });
     }
 
     const supabase = createAdminClient();
@@ -37,6 +44,7 @@ export async function POST(req: Request) {
                     .eq('id', userId);
 
                 // Insert/Update subscription record
+                const sessionWithExpiry = session as Stripe.Checkout.Session & { expires_at?: number };
                 await supabase
                     .from('subscriptions')
                     .upsert({
@@ -45,7 +53,9 @@ export async function POST(req: Request) {
                         stripe_subscription_id: subscriptionId,
                         plan: plan,
                         status: 'active',
-                        current_period_end: new Date((session as any).expires_at * 1000).toISOString(), // Roughly
+                        current_period_end: sessionWithExpiry.expires_at
+                            ? new Date(sessionWithExpiry.expires_at * 1000).toISOString()
+                            : null,
                     });
             }
             break;
@@ -53,17 +63,19 @@ export async function POST(req: Request) {
 
         case 'customer.subscription.updated': {
             const subscription = event.data.object as Stripe.Subscription;
-            const customerId = subscription.customer as string;
             const status = subscription.status;
 
             // Map Stripe status to our app status if necessary
             const internalStatus = status === 'active' ? 'active' : status === 'past_due' ? 'past_due' : 'cancelled';
+            const subWithPeriod = subscription as Stripe.Subscription & { current_period_end?: number };
 
             await supabase
                 .from('subscriptions')
                 .update({
                     status: internalStatus,
-                    current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString()
+                    current_period_end: subWithPeriod.current_period_end
+                        ? new Date(subWithPeriod.current_period_end * 1000).toISOString()
+                        : null
                 })
                 .eq('stripe_subscription_id', subscription.id);
             break;

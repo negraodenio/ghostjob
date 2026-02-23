@@ -57,7 +57,7 @@ export default async function GhostWallPage() {
                             </Link>
                         </div>
                     ) : (
-                        applications.map((app) => (
+                        applications.map((app, i) => (
                             <Link
                                 key={app.id}
                                 href={`/ghost/${app.id}`}
@@ -71,7 +71,7 @@ export default async function GhostWallPage() {
                                             </div>
                                             <div>
                                                 <h3 className="text-2xl font-bold group-hover:text-danger transition">
-                                                    {app.company_name || 'Anonymous Company'}
+                                                    Empresa {i + 1}
                                                 </h3>
                                                 <p className="text-text-secondary">{app.job_title || 'Unknown Position'}</p>
                                             </div>

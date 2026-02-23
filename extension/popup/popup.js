@@ -1,7 +1,7 @@
 // extension/popup/popup.js
 
 // Change this to your production URL when deploying
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = 'https://www.ghostproof.cv';
 
 // Check for LinkedIn profile
 async function checkLinkedInProfile() {
@@ -79,7 +79,7 @@ document.getElementById('save-profile-btn')?.addEventListener('click', async () 
         // Sync to Web App side if open (localhost:3000 or ghostjob.app)
         const tabs = await chrome.tabs.query({});
         for (const t of tabs) {
-            if (t.url?.includes('localhost:3000') || t.url?.includes('ghostjob.app')) {
+            if (t.url?.includes('localhost:3000') || t.url?.includes('ghostproof.cv')) {
                 await chrome.scripting.executeScript({
                     target: { tabId: t.id },
                     func: (data) => {
@@ -205,15 +205,40 @@ function displayResults(data) {
         adviceContainer.classList.remove('hidden');
     }
 
+    // Actions Container
+    const resultActions = document.getElementById('result-actions');
+    if (resultActions) {
+        resultActions.classList.remove('hidden');
+    }
+
     // Report Link
     const fullReportBtn = document.getElementById('full-report-btn');
     if (fullReportBtn) {
-        fullReportBtn.classList.remove('hidden');
         fullReportBtn.onclick = () => {
             chrome.tabs.create({ url: `${API_BASE_URL}/analyze/${data.id}` });
         };
     }
 }
+
+// Reset Extension to Initial State
+function resetToInitial() {
+    const result = document.getElementById('result');
+    const initialView = document.getElementById('initial-view');
+    const analyzeBtn = document.getElementById('analyze-btn');
+    const resultActions = document.getElementById('result-actions');
+    const errorDiv = document.getElementById('error');
+
+    if (result) result.classList.add('hidden');
+    if (resultActions) resultActions.classList.add('hidden');
+    if (initialView) initialView.classList.remove('hidden');
+    if (analyzeBtn) analyzeBtn.classList.remove('hidden');
+    if (errorDiv) errorDiv.classList.add('hidden');
+
+    document.body.removeAttribute('data-verdict');
+    chrome.storage.local.remove(['lastResult']);
+}
+
+document.getElementById('new-scan-btn')?.addEventListener('click', resetToInitial);
 
 document.getElementById('analyze-btn').addEventListener('click', async () => {
     const btn = document.getElementById('analyze-btn');
@@ -245,21 +270,27 @@ document.getElementById('analyze-btn').addEventListener('click', async () => {
                 const getText = (sel) => document.querySelector(sel)?.innerText?.trim() || '';
                 const getAllText = (sel) => Array.from(document.querySelectorAll(sel)).map(el => el.innerText.trim()).filter(Boolean);
 
-                // Target the active job details panel if it exists (LinkedIn search view)
+                // Target the active job details panel if it exists (LinkedIn search view, collection view, etc.)
                 const detailPanel = document.querySelector('.jobs-search__job-details--container') ||
                     document.querySelector('.jobs-search-two-pane__details') ||
+                    document.querySelector('.jobs-details__main-content') ||
+                    document.querySelector('.job-view-layout') ||
+                    document.querySelector('main') ||
                     document.body;
 
                 const selectors = {
                     title: [
                         '.job-details-jobs-unified-top-card__job-title', // Modern LinkedIn
-                        'h1',
+                        '.jobs-unified-top-card__job-title',
                         '.top-card-layout__title',
-                        '.jobsearch-JobInfoHeader-title',
-                        '.t-24.t-bold'
+                        '.job-details-inline-wrap h2',
+                        '.t-24.t-bold',
+                        'h1'
                     ],
                     company: [
                         '.job-details-jobs-unified-top-card__company-name',
+                        '.jobs-unified-top-card__company-name',
+                        '.jobs-unified-top-card__primary-description a',
                         '.topcard__org-name-link',
                         '.jobsearch-CompanyReview--primaryContact',
                         '[data-admin-ee-company-name]',
@@ -268,9 +299,16 @@ document.getElementById('analyze-btn').addEventListener('click', async () => {
                     ],
                     posted: [
                         '.job-details-jobs-unified-top-card__job-insight--highlight',
+                        '.jobs-unified-top-card__job-insight--highlight',
                         '.topcard__flavor--metadata',
                         '.jobsearch-JobMetadataFooter',
                         '.tvm__list-item'
+                    ],
+                    description: [
+                        '.jobs-description-content__text',
+                        '.jobs-description',
+                        '.show-more-less-html__markup',
+                        '.jobsearch-JobComponent-description'
                     ]
                 };
 
@@ -288,8 +326,19 @@ document.getElementById('analyze-btn').addEventListener('click', async () => {
                 // Specific filters
                 const isDate = (t) => t.includes('ago') || t.includes('atrás') || t.includes('posted') || t.includes('publicada') || /\d+[hdmy]/.test(t);
 
+                // Find description specifically if possible
+                let description = '';
+                for (const ds of selectors.description) {
+                    const el = detailPanel.querySelector(ds);
+                    if (el) {
+                        description = el.innerText.trim();
+                        break;
+                    }
+                }
+                if (!description) description = detailPanel.innerText || document.body.innerText;
+
                 return {
-                    description: detailPanel.innerText || document.body.innerText,
+                    description: description,
                     titleHint: findField(selectors.title, (t) => t.length > 3 && !isDate(t)),
                     companyHint: findField(selectors.company, (t) => t.length > 2 && !isDate(t)),
                     postedHint: findField(selectors.posted, isDate),

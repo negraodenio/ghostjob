@@ -2,6 +2,22 @@ import { createClient } from "@/lib/supabase/server";
 import LegalDisclaimer from "@/components/LegalDisclaimer";
 import Link from "next/link";
 
+interface SectorReport {
+    sector_name: string;
+    sector_status: string;
+    sector_integrity_index: number;
+    sector_ghost_ratio: number;
+    sector_response_rate: number;
+}
+
+interface AnonymizedRank {
+    anonymized_name: string;
+    sector: string;
+    grade: string;
+    score: number;
+    data_points: number;
+}
+
 export default async function ReportsPage() {
     const supabase = await createClient();
 
@@ -42,7 +58,7 @@ export default async function ReportsPage() {
                                 <p className="text-text-secondary">We are currently processing the latest hiring integrity signals. Check back in a few minutes.</p>
                                 <p className="text-[10px] text-primary/50 mt-4 uppercase font-bold">Scientific Engine Calibration in Progress</p>
                             </div>
-                        ) : sectors.map((sector: any) => (
+                        ) : (sectors as unknown as SectorReport[]).map((sector) => (
                             <div key={sector.sector_name} className="p-6 rounded-2xl bg-bg-card border border-white/5 hover:border-primary/30 transition group">
                                 <div className="flex justify-between items-start mb-4">
                                     <h3 className="text-xl font-bold">{sector.sector_name}</h3>
@@ -108,7 +124,7 @@ export default async function ReportsPage() {
                                                 Leaderboard data is currently being verified.
                                             </td>
                                         </tr>
-                                    ) : leaderboard.map((rank: any, i: number) => (
+                                    ) : (leaderboard as unknown as AnonymizedRank[]).map((rank, i) => (
                                         <tr key={rank.anonymized_name} className="hover:bg-white/[0.02] transition">
                                             <td className="px-8 py-6 font-bold text-lg">#{i + 1}</td>
                                             <td className="px-8 py-6 text-text-secondary">{rank.sector}</td>

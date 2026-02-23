@@ -89,10 +89,6 @@ export default function CompanyDashboard({ params }: { params: { slug: string } 
         ghost_job_rate: 0
     };
 
-    const scoreColor = displayCompany.hiring_integrity_score >= 80 ? 'text-success' :
-        displayCompany.hiring_integrity_score >= 50 ? 'text-primary' :
-            'text-danger';
-
     return (
         <div className="min-h-screen bg-bg-primary text-text-primary">
             {/* Header */}
@@ -101,7 +97,7 @@ export default function CompanyDashboard({ params }: { params: { slug: string } 
                     <div className="flex items-center space-x-6">
                         <Link href="/" className="text-2xl">👻</Link>
                         <div>
-                            <h1 className="text-xl font-black uppercase tracking-widest">{displayCompany.name}</h1>
+                            <h1 className="text-xl font-black uppercase tracking-widest">Empresa</h1>
                             <p className="text-[10px] text-text-secondary font-bold">Reputation Dashboard</p>
                         </div>
                     </div>

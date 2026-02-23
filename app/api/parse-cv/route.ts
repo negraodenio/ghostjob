@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getLLMResponse, createConversation } from '@/lib/llm';
-// @ts-ignore
-import pdf from 'pdf-parse';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdf = require('pdf-parse') as (buf: Buffer) => Promise<{ text: string }>;
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

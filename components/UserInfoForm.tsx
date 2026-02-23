@@ -108,8 +108,8 @@ export default function UserInfoForm({ onSubmit, isLoading }: UserInfoFormProps)
                 phone: data.phone || prev.phone,
                 currentTitle: data.work_experience?.[0]?.title || prev.currentTitle,
                 skills: data.skills?.join(', ') || prev.skills,
-                experience: data.work_experience?.map((w: any) => `${w.title} at ${w.company}\n${w.description}`).join('\n\n') || prev.experience,
-                education: data.education?.map((e: any) => `${e.degree}, ${e.institution}`).join('\n') || prev.education,
+                experience: data.work_experience?.map((w: { title: string; company: string; description: string }) => `${w.title} at ${w.company}\n${w.description}`).join('\n\n') || prev.experience,
+                education: data.education?.map((e: { degree: string; institution: string }) => `${e.degree}, ${e.institution}`).join('\n') || prev.education,
             }));
             setShowOptional(true);
         } catch (error) {

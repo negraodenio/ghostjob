@@ -5,8 +5,8 @@ export async function createClient() {
     const cookieStore = await cookies();
 
     return createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://placeholder.supabase.co',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'placeholder-anon-key',
         {
             cookies: {
                 get(name: string) {
@@ -17,14 +17,14 @@ export async function createClient() {
                         // In Next.js 14+, we can't set cookies in Server Components 
                         // during the render phase. This is usually handled by middleware.
                         cookieStore.set({ name, value, ...options });
-                    } catch (error) {
+                    } catch {
                         // Silently fail if we can't set cookies (expected in Server Components)
                     }
                 },
                 remove(name: string, options: CookieOptions) {
                     try {
                         cookieStore.set({ name, value: '', ...options });
-                    } catch (error) {
+                    } catch {
                         // Silently fail if we can't delete cookies
                     }
                 },

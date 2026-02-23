@@ -3,9 +3,19 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function ProfileManager({ initialProfile }: { initialProfile: any }) {
+interface Profile {
+    raw_resume_text?: string;
+    full_name?: string;
+    location?: string;
+    professional_summary?: string;
+    skills?: string[];
+    work_experience?: { title: string; company: string; period: string; description: string }[];
+    [key: string]: unknown;
+}
+
+export default function ProfileManager({ initialProfile }: { initialProfile: Profile | null }) {
     const router = useRouter();
-    const [profile, setProfile] = useState(initialProfile);
+    const [profile, setProfile] = useState<Profile | null>(initialProfile);
     const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -40,7 +50,7 @@ export default function ProfileManager({ initialProfile }: { initialProfile: any
 
             setSuccess('CV parsed successfully! Your profile has been updated.');
             // Update local state with new profile data
-            setProfile((prev: any) => ({
+            setProfile((prev) => ({
                 ...prev,
                 ...data.data
             }));
@@ -63,7 +73,7 @@ export default function ProfileManager({ initialProfile }: { initialProfile: any
                     <span className="text-primary">📄</span> Upload CV (PDF)
                 </h2>
                 <p className="text-text-secondary mb-6 text-sm">
-                    We'll extract your experience, skills, and education automatically using AI. This data is used to generate tailor-made CVs and cover letters.
+                    We&apos;ll extract your experience, skills, and education automatically using AI. This data is used to generate tailor-made CVs and cover letters.
                 </p>
 
                 <div className="flex items-center gap-4">
@@ -127,7 +137,7 @@ export default function ProfileManager({ initialProfile }: { initialProfile: any
                     <div>
                         <label className="block text-sm font-bold text-text-secondary mb-2">Skills</label>
                         <div className="flex flex-wrap gap-2">
-                            {profile.skills?.length > 0 ? profile.skills.map((skill: string, i: number) => (
+                            {profile.skills && profile.skills.length > 0 ? profile.skills.map((skill: string, i: number) => (
                                 <span key={i} className="bg-primary/20 text-primary border border-primary/30 px-3 py-1 rounded-full text-sm">
                                     {skill}
                                 </span>
@@ -138,7 +148,7 @@ export default function ProfileManager({ initialProfile }: { initialProfile: any
                     <div>
                         <label className="block text-sm font-bold text-text-secondary mb-2">Recent Experience</label>
                         <div className="space-y-3">
-                            {profile.work_experience?.length > 0 ? profile.work_experience.map((exp: any, i: number) => (
+                            {profile.work_experience && profile.work_experience.length > 0 ? profile.work_experience.map((exp, i: number) => (
                                 <div key={i} className="bg-bg-primary p-4 rounded-lg border border-gray-800">
                                     <div className="font-bold">{exp.title}</div>
                                     <div className="text-sm text-text-secondary mb-2">{exp.company} • {exp.period}</div>

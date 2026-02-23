@@ -62,7 +62,7 @@ export async function GET(
 ) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
-    const token = searchParams.get('token'); // Future: add security token
+    // Future: validate a signed token here (searchParams.get('token')).
 
     if (!status || !STATUS_MAP[status]) {
         return new NextResponse('Invalid status', { status: 400 });

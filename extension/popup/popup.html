@@ -137,14 +137,19 @@
 
     </main>
 
-    <!-- Footer Actions -->
     <footer class="footer">
-      <button id="full-report-btn" class="btn-primary-gradient hidden">
-        <span>View Full Report</span>
-        <div class="btn-icon-pill">
-          <span class="material-symbols-outlined">arrow_forward</span>
-        </div>
-      </button>
+      <div id="result-actions" class="hidden" style="width: 100%; display: flex; flex-direction: column; gap: 8px;">
+        <button id="full-report-btn" class="btn-primary-gradient">
+          <span>View Full Report</span>
+          <div class="btn-icon-pill">
+            <span class="material-symbols-outlined">arrow_forward</span>
+          </div>
+        </button>
+        <button id="new-scan-btn" class="btn-secondary-glass" style="width: 100%; margin-top: 0;">
+          <span class="material-symbols-outlined">refresh</span>
+          <span>New Analysis</span>
+        </button>
+      </div>
       <button id="view-dashboard" class="footer-link">
         <span class="material-symbols-outlined">history</span>
         <span>View Scan History</span>

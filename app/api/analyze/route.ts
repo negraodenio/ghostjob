@@ -480,6 +480,23 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Normalize ghost_verdict to match database constraints
+        const normalizeVerdict = (verdict: string, score: number): 'legit' | 'sus' | 'ghost' | 'certified_ghost' => {
+            const v = (verdict || '').toLowerCase().trim().replace(/\s+/g, '_');
+
+            if (['certified_ghost', 'ghost', 'sus', 'legit'].includes(v)) {
+                return v as 'legit' | 'sus' | 'ghost' | 'certified_ghost';
+            }
+
+            // Fallback mapping in case LLM returns something else
+            if (v.includes('certified') || v.includes('fake') || score > 85) return 'certified_ghost';
+            if (v.includes('ghost') || score > 60) return 'ghost';
+            if (v.includes('sus') || v.includes('suspicious') || score > 30) return 'sus';
+            return 'legit';
+        };
+
+        analysisResult.ghost_verdict = normalizeVerdict(analysisResult.ghost_verdict, analysisResult.ghost_score);
+
         // Save to database
         // Ensure profile exists if user is logged in (to satisfy foreign key constraint)
         if (user?.id) {
