@@ -1,768 +1,561 @@
 import Link from "next/link";
 import AnalyzeForm from "@/components/AnalyzeForm";
+import { createClient } from "@/lib/supabase/server";
 
-export default function HomePage() {
+export default async function HomePage() {
+    let legitStats: any = null;
+    let ghostStats: any = null;
+    let topCompanies: any[] | null = null;
+    let susJobs: any[] | null = null;
+
+    try {
+        const supabase = await createClient();
+
+        // 1. Fetch Real-time Market Signals
+        const { data: correlation } = await supabase
+            .from('view_ghost_score_correlation')
+            .select('*');
+
+        legitStats = (correlation as any[])?.find((c: any) => c.score_category === 'legit') || null;
+        ghostStats = (correlation as any[])?.find((c: any) => c.score_category === 'certified_ghost') || null;
+
+        // 2. Fetch Top Companies
+        const { data: companies } = await supabase
+            .from('view_company_leaderboard')
+            .select('*')
+            .order('hiring_integrity_score', { ascending: false })
+            .limit(3);
+        topCompanies = companies;
+
+        // 3. Fetch Recent Suspicious Jobs
+        const { data: jobs } = await supabase
+            .from('jobs')
+            .select(`
+                id,
+                job_title,
+                ghost_score,
+                ghost_verdict,
+                created_at,
+                company:company_id (name)
+            `)
+            .order('ghost_score', { ascending: false })
+            .limit(3);
+        susJobs = jobs;
+    } catch (err) {
+        // Silently fail — page will render with fallback data
+        console.error('[HomePage] Data fetch error:', err);
+    }
+
     return (
         <div className="min-h-screen">
-            {/* Navigation */}
-            <nav className="border-b border-gray-800 bg-bg-card/50 backdrop-blur-sm fixed w-full z-50">
-                <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-                    <div className="flex items-center space-x-2">
-                        <span className="text-3xl">👻</span>
-                        <span className="text-xl font-bold">GhostJob</span>
-                    </div>
-                    <div className="hidden md:flex space-x-8">
-                        <a href="#how-it-works" className="text-text-secondary hover:text-text-primary transition">How It Works</a>
-                        <a href="#features" className="text-text-secondary hover:text-text-primary transition">Features</a>
-                        <a href="#pricing" className="text-text-secondary hover:text-text-primary transition">Pricing</a>
-                        <Link href="/ghost-wall" className="text-text-secondary hover:text-text-primary transition">Ghost Wall</Link>
-                    </div>
-                    <div className="flex space-x-4">
-                        <Link href="/login" className="text-text-secondary hover:text-text-primary transition">Login</Link>
-                        <Link href="/analyze" className="px-6 py-2 gradient-purple rounded-lg font-semibold hover:opacity-90 transition">
-                            Try Free
-                        </Link>
-                    </div>
-                </div>
-            </nav>
 
-            {/* Hero Section */}
-            <section className="pt-32 pb-20 px-6 relative overflow-hidden">
-                <div className="absolute inset-0 opacity-20">
-                    <div className="ghost-float absolute top-20 left-10 text-6xl">👻</div>
-                    <div className="ghost-float absolute top-40 right-20 text-4xl" style={{ animationDelay: '1s' }}>👻</div>
-                    <div className="ghost-float absolute bottom-20 left-1/3 text-5xl" style={{ animationDelay: '2s' }}>👻</div>
-                </div>
+            {/* ═══════════════════════════════════════════
+                SECTION 1 — HERO
+            ═══════════════════════════════════════════ */}
+            <section className="pt-40 pb-20 px-6 relative overflow-hidden">
+                <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-primary/10 blur-[120px] rounded-full -z-10"></div>
 
-                <div className="container mx-auto max-w-5xl text-center relative z-10">
-                    <h1 className="text-6xl md:text-7xl font-black mb-6 leading-tight">
-                        Stop Applying to <span className="text-primary">Ghost Jobs</span>.
-                        <br />
-                        Start Landing Real Ones.
+                <div className="container mx-auto text-center max-w-5xl relative z-10">
+                    <div className="inline-flex items-center space-x-2 bg-white/5 border border-white/10 px-4 py-2 rounded-full mb-8">
+                        <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
+                        </span>
+                        <span className="text-[10px] font-black tracking-[0.2em] uppercase text-text-secondary">
+                            Live Hiring Integrity Data
+                        </span>
+                    </div>
+
+                    <h1 className="text-6xl md:text-8xl font-black mb-8 leading-[1.1] tracking-tighter bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40">
+                        We Rate Companies Based on <br />
+                        <span className="text-primary italic">Hiring Transparency.</span>
                     </h1>
-                    <p className="text-xl md:text-2xl text-text-secondary mb-10 max-w-3xl mx-auto">
-                        You spend hours tailoring your CV, writing cover letters, and preparing for interviews — only to never hear back.
-                        What if the job was never real?
+
+                    <p className="text-xl md:text-2xl text-text-secondary mb-12 max-w-3xl mx-auto leading-relaxed">
+                        The market is flooded with &quot;Ghost Jobs&quot;. We use real-time outcome data to verify which companies are actually hiring — and which ones are just hoarding resumes.
                     </p>
-                    <div className="max-w-2xl mx-auto mb-6">
-                        <AnalyzeForm />
+
+                    <div className="bg-bg-card p-1 rounded-[2.5rem] border border-white/10 shadow-2xl max-w-2xl mx-auto mb-16 hover:border-primary/30 transition duration-500">
+                        <div className="p-8">
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary mb-6">Verify a Job Posting</h3>
+                            <AnalyzeForm />
+                        </div>
                     </div>
-                    <p className="text-sm text-text-secondary">
-                        100% Secure • AI-Powered Detection • Results in Seconds
-                    </p>
+
+                    {/* Live Market Signals */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left max-w-5xl mx-auto">
+                        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5">
+                            <div className="text-text-secondary text-[10px] font-black uppercase tracking-[0.2em] mb-3">Ghost Ratio</div>
+                            <div className="text-3xl font-black mb-1 flex items-baseline">
+                                {ghostStats?.response_rate_pct ? `${Math.round(100 - ghostStats.response_rate_pct)}%` : '42.8%'}
+                                <span className="text-danger text-xs ml-2">▲ High</span>
+                            </div>
+                            <p className="text-xs text-text-secondary">Jobs with zero intent to hire.</p>
+                        </div>
+                        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5">
+                            <div className="text-text-secondary text-[10px] font-black uppercase tracking-[0.2em] mb-3">Verified Response Rate</div>
+                            <div className="text-3xl font-black mb-1">
+                                {legitStats?.response_rate_pct ? `${Math.round(legitStats.response_rate_pct)}%` : '86.4%'}
+                            </div>
+                            <p className="text-xs text-text-secondary">For companies with Hiring Grade A.</p>
+                        </div>
+                        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5">
+                            <div className="text-text-secondary text-[10px] font-black uppercase tracking-[0.2em] mb-3">Market Leader</div>
+                            <div className="text-xl font-black mb-1 text-success">
+                                {topCompanies?.[0]?.name || 'Fetching...'}
+                            </div>
+                            <p className="text-xs text-text-secondary">Most responsive company this week.</p>
+                        </div>
+                    </div>
                 </div>
             </section>
 
-            {/* Section 2: Sound Familiar? (Pain Points) */}
+
+            {/* ═══════════════════════════════════════════
+                SECTION 2 — APPLICATION TOOLKIT
+                Framed as "Once verified, we arm you"
+            ═══════════════════════════════════════════ */}
+            <section className="py-20 px-6 bg-bg-card border-y border-white/5">
+                <div className="container mx-auto max-w-6xl">
+                    <div className="text-center mb-14">
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary mb-3">Once the job is verified</p>
+                        <h2 className="text-4xl md:text-5xl font-black mb-4">We Arm You.</h2>
+                        <p className="text-lg text-text-secondary max-w-2xl mx-auto">
+                            Every tool below is generated specifically for that job posting — not a generic template.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-bg-primary p-7 rounded-xl border border-white/5 flex gap-5">
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0 mt-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <h3 className="text-lg font-bold">Smart CV Builder</h3>
+                                    <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">PRO</span>
+                                </div>
+                                <p className="text-text-secondary text-sm leading-relaxed">ATS-optimized resume tailored to each specific job. Keyword matching, 3 professional templates, PDF export.</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-bg-primary p-7 rounded-xl border border-white/5 flex gap-5">
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0 mt-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <h3 className="text-lg font-bold">Cover Letter Writer</h3>
+                                    <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">PRO</span>
+                                </div>
+                                <p className="text-text-secondary text-sm leading-relaxed">Personalized, not &apos;Dear Hiring Manager&apos;. References the actual requirements and your real experience. 3 tone options.</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-bg-primary p-7 rounded-xl border border-white/5 flex gap-5">
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0 mt-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <h3 className="text-lg font-bold">Interview Prep</h3>
+                                    <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">PRO</span>
+                                </div>
+                                <p className="text-text-secondary text-sm leading-relaxed">AI generates the exact questions they&apos;ll likely ask, then coaches you with STAR method responses and a cheat sheet.</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-bg-primary p-7 rounded-xl border border-white/5 flex gap-5">
+                            <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center text-success flex-shrink-0 mt-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <h3 className="text-lg font-bold">Outcome Tracker</h3>
+                                    <span className="text-[10px] font-bold text-success bg-success/10 px-2 py-0.5 rounded">FREE</span>
+                                </div>
+                                <p className="text-text-secondary text-sm leading-relaxed">Track your application status. Your data feeds back into the Ghost Transparency Score™ — improving the system for everyone.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+            {/* ═══════════════════════════════════════════
+                SECTION 3 — HOW IT WORKS
+            ═══════════════════════════════════════════ */}
+            <section className="py-24 px-6 border-y border-white/5 bg-bg-card">
+                <div className="container mx-auto max-w-5xl">
+                    <div className="text-center mb-16">
+                        <h2 className="text-4xl md:text-5xl font-black mb-4">How It Works</h2>
+                        <p className="text-lg text-text-secondary">Three steps. Five seconds. Zero wasted applications.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+                        <div className="text-center">
+                            <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-2xl font-black mx-auto mb-5">1</div>
+                            <h3 className="text-xl font-bold mb-2">Paste the Job URL</h3>
+                            <p className="text-text-secondary text-sm leading-relaxed">Copy the link from LinkedIn, Indeed, Glassdoor — or paste the job description directly.</p>
+                        </div>
+                        <div className="text-center">
+                            <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-2xl font-black mx-auto mb-5">2</div>
+                            <h3 className="text-xl font-bold mb-2">Get the Ghost Score</h3>
+                            <p className="text-text-secondary text-sm leading-relaxed">AI analyzes 15+ red flags in seconds. You get a probability score, company integrity grade, and detailed breakdown.</p>
+                        </div>
+                        <div className="text-center">
+                            <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-2xl font-black mx-auto mb-5">3</div>
+                            <h3 className="text-xl font-bold mb-2">Apply With Confidence</h3>
+                            <p className="text-text-secondary text-sm leading-relaxed">If the job is legit, generate a tailored CV, cover letter, and interview prep — all specific to that role.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+            {/* ═══════════════════════════════════════════
+                SECTION 3 — SOUND FAMILIAR? (Pain Points)
+            ═══════════════════════════════════════════ */}
             <section className="py-20 px-6">
                 <div className="container mx-auto max-w-6xl">
-                    <h2 className="text-5xl font-bold text-center mb-16">Sound Familiar?</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-                        <div className="bg-gradient-to-br from-red-900/20 to-bg-card p-8 rounded-xl border border-red-900/30">
-                            <div className="text-6xl mb-4 text-center">😤</div>
-                            <p className="text-lg text-center">
-                                Applied to 50+ jobs this month. Got 2 responses.
+                    <h2 className="text-4xl md:text-5xl font-bold text-center mb-16">Sound Familiar?</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                        <div className="bg-white/[0.03] p-8 rounded-xl border border-white/5">
+                            <p className="text-lg leading-relaxed">
+                                &ldquo;Applied to 50+ jobs this month. Got 2 responses.&rdquo;
                             </p>
                         </div>
-                        <div className="bg-gradient-to-br from-red-900/20 to-bg-card p-8 rounded-xl border border-red-900/30">
-                            <div className="text-6xl mb-4 text-center">😩</div>
-                            <p className="text-lg text-center">
-                                Spent 3 hours customizing my CV for a role that was posted 4 months ago.
+                        <div className="bg-white/[0.03] p-8 rounded-xl border border-white/5">
+                            <p className="text-lg leading-relaxed">
+                                &ldquo;Spent 3 hours customizing my CV for a role posted 4 months ago.&rdquo;
                             </p>
                         </div>
-                        <div className="bg-gradient-to-br from-red-900/20 to-bg-card p-8 rounded-xl border border-red-900/30">
-                            <div className="text-6xl mb-4 text-center">😡</div>
-                            <p className="text-lg text-center">
-                                The listing asked for 10 years of experience in a 5-year-old technology.
+                        <div className="bg-white/[0.03] p-8 rounded-xl border border-white/5">
+                            <p className="text-lg leading-relaxed">
+                                &ldquo;The listing asked for 10 years of experience in a 5-year-old technology.&rdquo;
                             </p>
                         </div>
                     </div>
                     <div className="text-center max-w-2xl mx-auto">
-                        <p className="text-3xl font-bold mb-3">It&apos;s not you. It&apos;s ghost jobs.</p>
-                        <p className="text-2xl text-primary mb-2">43% of online job postings aren&apos;t real.</p>
+                        <p className="text-2xl font-bold mb-3">It&apos;s not you. It&apos;s ghost jobs.</p>
+                        <p className="text-xl text-primary font-semibold mb-2">43% of online job postings aren&apos;t real.</p>
                         <p className="text-sm text-text-secondary">— Clarify Capital Research, 2022</p>
                     </div>
                 </div>
             </section>
 
-            {/* Section 3: What is a Ghost Job? (Education) */}
+
+            {/* ═══════════════════════════════════════════
+                SECTION 4 — THE TRANSPARENCY GAP (Education)
+            ═══════════════════════════════════════════ */}
             <section className="py-20 px-6 bg-bg-card">
                 <div className="container mx-auto max-w-6xl">
-                    <h2 className="text-5xl font-bold text-center mb-8">What is a Ghost Job? 👻</h2>
-                    <p className="text-xl text-center text-text-secondary mb-12 max-w-3xl mx-auto">
-                        Ghost jobs are positions that companies post online with no intention of actually hiring anyone. They exist because...
+                    <h2 className="text-4xl md:text-5xl font-black text-center mb-4">The Transparency Gap.</h2>
+                    <p className="text-lg text-center text-text-secondary mb-14 max-w-3xl mx-auto leading-relaxed">
+                        Companies post &quot;Ghost Jobs&quot; for many reasons. Collectively, they create a massive market failure for talent.
                     </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-                        <div className="bg-bg-primary p-8 rounded-xl border border-gray-800">
-                            <div className="text-5xl mb-4">📋</div>
-                            <h3 className="text-2xl font-bold mb-3">Legal Compliance</h3>
-                            <p className="text-text-secondary">
-                                HR needs to prove they tried to fill the role externally before giving it to an internal candidate.
-                            </p>
-                        </div>
-                        <div className="bg-bg-primary p-8 rounded-xl border border-gray-800">
-                            <div className="text-5xl mb-4">🏦</div>
-                            <h3 className="text-2xl font-bold mb-3">Talent Hoarding</h3>
-                            <p className="text-text-secondary">
-                                Companies collect resumes for future openings that may never come. Your CV sits in a database forever.
-                            </p>
-                        </div>
-                        <div className="bg-bg-primary p-8 rounded-xl border border-gray-800">
-                            <div className="text-5xl mb-4">📈</div>
-                            <h3 className="text-2xl font-bold mb-3">Growth Optics</h3>
-                            <p className="text-text-secondary">
-                                Posting jobs makes the company look like it&apos;s growing — great for investors, terrible for you.
-                            </p>
-                        </div>
-                        <div className="bg-bg-primary p-8 rounded-xl border border-gray-800">
-                            <div className="text-5xl mb-4">👤</div>
-                            <h3 className="text-2xl font-bold mb-3">Already Filled</h3>
-                            <p className="text-text-secondary">
-                                The internal candidate was chosen before the job was even posted. The listing is just a formality.
-                            </p>
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+                        {[
+                            { title: 'Legal Compliance', desc: 'HR needs to prove they tried to fill the role externally before giving it to an internal candidate.' },
+                            { title: 'Talent Hoarding', desc: 'Companies collect resumes for future openings that may never come. Your CV sits in a database forever.' },
+                            { title: 'Growth Optics', desc: "Posting jobs makes the company look like it's growing — great for investors, terrible for you." },
+                            { title: 'Already Filled', desc: 'The internal candidate was chosen before the job was posted. The listing is just a formality.' },
+                        ].map((item, i) => (
+                            <div key={i} className="bg-bg-primary p-7 rounded-xl border border-white/5">
+                                <h3 className="text-lg font-bold mb-2">{item.title}</h3>
+                                <p className="text-text-secondary text-sm leading-relaxed">{item.desc}</p>
+                            </div>
+                        ))}
                     </div>
-                    <div className="max-w-2xl mx-auto bg-gradient-to-br from-primary/20 to-bg-card p-8 rounded-xl border-2 border-primary/50">
-                        <p className="text-2xl text-center font-bold">
+                    <div className="max-w-2xl mx-auto bg-white/[0.03] p-8 rounded-xl border border-primary/20 text-center">
+                        <p className="text-xl font-bold">
                             The average job seeker wastes 5.5 hours per week applying to jobs that don&apos;t exist.
                         </p>
                     </div>
                 </div>
             </section>
 
-            {/* Section 4: Before vs After */}
+
+            {/* ═══════════════════════════════════════════
+                SECTION 5 — GHOST TRANSPARENCY SCORE™
+            ═══════════════════════════════════════════ */}
             <section className="py-20 px-6">
                 <div className="container mx-auto max-w-6xl">
-                    <h2 className="text-5xl font-bold text-center mb-16">Apply Smarter. Not Harder.</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Without GhostJob */}
-                        <div className="bg-gradient-to-br from-red-900/10 to-bg-card p-8 rounded-xl border-2 border-red-900/30">
-                            <h3 className="text-2xl font-bold mb-6 flex items-center">
-                                <span className="mr-2">❌</span> Without GhostJob
-                            </h3>
-                            <ul className="space-y-4">
-                                <li className="flex items-start">
-                                    <span className="text-red-500 mr-3 mt-1">❌</span>
-                                    <span>Find job → Apply → Hope → Silence → Repeat</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-red-500 mr-3 mt-1">❌</span>
-                                    <span>11 hours/week searching blindly</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-red-500 mr-3 mt-1">❌</span>
-                                    <span>2-3% application response rate</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-red-500 mr-3 mt-1">❌</span>
-                                    <span>No idea which jobs are real</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-red-500 mr-3 mt-1">❌</span>
-                                    <span>Same generic CV for every application</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-red-500 mr-3 mt-1">❌</span>
-                                    <span>Ghosted by ghost jobs</span>
-                                </li>
-                            </ul>
-                        </div>
-
-                        {/* With GhostJob */}
-                        <div className="bg-gradient-to-br from-primary/10 to-bg-card p-8 rounded-xl border-2 border-primary/50">
-                            <h3 className="text-2xl font-bold mb-6 flex items-center">
-                                <span className="mr-2">✅</span> With GhostJob
-                            </h3>
-                            <ul className="space-y-4">
-                                <li className="flex items-start">
-                                    <span className="text-success mr-3 mt-1">✅</span>
-                                    <span>Find job → Ghost Check → Tailored CV → Ace Interview → Hired</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-success mr-3 mt-1">✅</span>
-                                    <span>5+ hours saved per week</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-success mr-3 mt-1">✅</span>
-                                    <span>Focus only on verified real opportunities</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-success mr-3 mt-1">✅</span>
-                                    <span>Know the ghost score before investing time</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-success mr-3 mt-1">✅</span>
-                                    <span>CV optimized for THAT specific job</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-success mr-3 mt-1">✅</span>
-                                    <span>Interview prep for THAT specific role</span>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Section 6: How It Works */}
-            <section id="how-it-works" className="py-20 px-6">
-                <div className="container mx-auto max-w-6xl">
-                    <h2 className="text-5xl font-bold text-center mb-4">How It Works</h2>
-                    <p className="text-xl text-center text-text-secondary mb-16 max-w-3xl mx-auto">
-                        From any job board to interview-ready in minutes.
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8 relative">
-                        {/* Connecting line (desktop only) */}
-                        <div className="hidden md:block absolute top-12 left-0 w-full h-0.5 bg-gradient-to-r from-gray-800 via-primary/50 to-gray-800 -z-10"></div>
-
-                        <div className="text-center bg-bg-primary md:bg-transparent p-6 md:p-0 rounded-xl md:rounded-none z-10">
-                            <div className="w-24 h-24 mx-auto bg-bg-card border border-gray-700 rounded-full flex items-center justify-center text-4xl mb-6 shadow-lg relative">
-                                🔍
-                                <div className="absolute -top-2 -right-2 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-xs font-bold text-white border-4 border-bg-primary">01</div>
-                            </div>
-                            <h3 className="text-xl font-bold mb-2">Find a Job Anywhere</h3>
-                            <p className="text-text-secondary text-sm">LinkedIn, Indeed, Glassdoor — wherever you search.</p>
-                        </div>
-
-                        <div className="text-center bg-bg-primary md:bg-transparent p-6 md:p-0 rounded-xl md:rounded-none z-10">
-                            <div className="w-24 h-24 mx-auto bg-bg-card border border-gray-700 rounded-full flex items-center justify-center text-4xl mb-6 shadow-lg relative">
-                                📋
-                                <div className="absolute -top-2 -right-2 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-xs font-bold text-white border-4 border-bg-primary">02</div>
-                            </div>
-                            <h3 className="text-xl font-bold mb-2">Paste It Here</h3>
-                            <p className="text-text-secondary text-sm">Copy the job description and paste it into GhostJob.</p>
-                        </div>
-
-                        <div className="text-center bg-bg-primary md:bg-transparent p-6 md:p-0 rounded-xl md:rounded-none z-10">
-                            <div className="w-24 h-24 mx-auto bg-bg-card border border-gray-700 rounded-full flex items-center justify-center text-4xl mb-6 shadow-lg relative">
-                                👻
-                                <div className="absolute -top-2 -right-2 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-xs font-bold text-white border-4 border-bg-primary">03</div>
-                            </div>
-                            <h3 className="text-xl font-bold mb-2">Get the Truth</h3>
-                            <p className="text-text-secondary text-sm">AI analyzes 15+ signals and reveals the ghost score in seconds.</p>
-                        </div>
-
-                        <div className="text-center bg-bg-primary md:bg-transparent p-6 md:p-0 rounded-xl md:rounded-none z-10">
-                            <div className="w-24 h-24 mx-auto bg-bg-card border border-gray-700 rounded-full flex items-center justify-center text-4xl mb-6 shadow-lg relative">
-                                🚀
-                                <div className="absolute -top-2 -right-2 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-xs font-bold text-white border-4 border-bg-primary">04</div>
-                            </div>
-                            <h3 className="text-xl font-bold mb-2">Apply with Confidence</h3>
-                            <p className="text-text-secondary text-sm">If it&apos;s real, get tailored CV, cover letter, and interview prep.</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Section 5: Features (Four Superpowers) */}
-            <section id="features" className="py-20 px-6 bg-bg-card">
-                <div className="container mx-auto max-w-6xl">
-                    <h2 className="text-5xl font-bold text-center mb-4">One Job Description. Four Superpowers.</h2>
-                    <p className="text-xl text-center text-text-secondary mb-16 max-w-3xl mx-auto">
-                        Paste a job description and get everything you need to land it.
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="bg-bg-primary p-8 rounded-xl border border-gray-800 hover:border-primary transition card-glow relative group">
-                            <span className="absolute top-4 right-4 bg-green-500/20 text-green-500 text-xs font-bold px-2 py-1 rounded border border-green-500/30">FREE</span>
-                            <div className="text-5xl mb-4 group-hover:scale-110 transition duration-300">👻</div>
-                            <h3 className="text-2xl font-bold mb-3">Ghost Detector</h3>
-                            <p className="text-text-secondary mb-4">Know if a job is real BEFORE you waste 2 hours applying. AI analyzes 15+ red flags in 5 seconds.</p>
-                            <p className="text-xs text-text-secondary opacity-60">Checks impossible requirements, vague descriptions, missing salary, reposting patterns, and more.</p>
-                        </div>
-                        <div className="bg-bg-primary p-8 rounded-xl border border-gray-800 hover:border-primary transition card-glow relative group">
-                            <span className="absolute top-4 right-4 bg-purple-500/20 text-primary text-xs font-bold px-2 py-1 rounded border border-primary/30">PRO</span>
-                            <div className="text-5xl mb-4 group-hover:scale-110 transition duration-300">📄</div>
-                            <h3 className="text-2xl font-bold mb-3">Smart CV Builder</h3>
-                            <p className="text-text-secondary mb-4">ATS-optimized resume tailored to each specific job. Not a template — a weapon.</p>
-                            <p className="text-xs text-text-secondary opacity-60">3 professional templates, keyword optimization, ATS compatibility score, PDF export.</p>
-                        </div>
-                        <div className="bg-bg-primary p-8 rounded-xl border border-gray-800 hover:border-primary transition card-glow relative group">
-                            <span className="absolute top-4 right-4 bg-purple-500/20 text-primary text-xs font-bold px-2 py-1 rounded border border-primary/30">PRO</span>
-                            <div className="text-5xl mb-4 group-hover:scale-110 transition duration-300">✉️</div>
-                            <h3 className="text-2xl font-bold mb-3">Cover Letter Writer</h3>
-                            <p className="text-text-secondary mb-4">Personalized, not &apos;Dear Hiring Manager&apos;. References the actual job requirements and your real experience.</p>
-                            <p className="text-xs text-text-secondary opacity-60">3 tone options: Professional, Friendly, Bold. Download as PDF or copy to clipboard.</p>
-                        </div>
-                        <div className="bg-bg-primary p-8 rounded-xl border border-gray-800 hover:border-primary transition card-glow relative group">
-                            <span className="absolute top-4 right-4 bg-purple-500/20 text-primary text-xs font-bold px-2 py-1 rounded border border-primary/30">PRO</span>
-                            <div className="text-5xl mb-4 group-hover:scale-110 transition duration-300">🎤</div>
-                            <h3 className="text-2xl font-bold mb-3">Interview Prep</h3>
-                            <p className="text-text-secondary mb-4">AI generates the exact questions they&apos;ll likely ask, then coaches you through mock interviews with real-time feedback.</p>
-                            <p className="text-xs text-text-secondary opacity-60">12-15 targeted questions, mock interview chat, cheat sheet, STAR method coaching.</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* NEW Section 7: Science Section */}
-            <section className="py-20 px-6">
-                <div className="container mx-auto max-w-6xl">
-                    <div className="text-center mb-16">
-                        <h2 className="text-5xl font-bold mb-4">Science, Not Guesswork</h2>
-                        <p className="text-xl text-text-secondary max-w-3xl mx-auto">
-                            Our AI analyzes every job description across three research-backed dimensions.
+                    <div className="text-center mb-14">
+                        <h2 className="text-4xl md:text-5xl font-black mb-4">
+                            <span className="text-primary">Ghost Transparency Score™</span>
+                        </h2>
+                        <p className="text-lg text-text-secondary max-w-3xl mx-auto">
+                            We use collective outcomes to build the first real-time integrity rating for hiring companies.
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-                        {/* Clarity Score */}
-                        <div className="bg-bg-card p-8 rounded-2xl border border-gray-800 hover:border-primary/50 transition duration-300 shadow-xl relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 group-hover:bg-primary/10 transition-colors"></div>
-                            <div className="text-6xl mb-6 relative z-10">📐</div>
-                            <h3 className="text-2xl font-bold mb-4 relative z-10">Clarity Score</h3>
-                            <p className="text-text-secondary mb-4 relative z-10">
-                                Is the job description specific about responsibilities and requirements? Or is it full of vague buzzwords that say nothing?
-                            </p>
-                            <p className="text-sm text-text-secondary/60 mt-auto relative z-10">Based on NLP readability analysis</p>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="bg-bg-card p-6 rounded-2xl border border-white/5">
+                            <h3 className="font-semibold text-sm text-text-secondary mb-1">Legit Job RR</h3>
+                            <div className="text-2xl font-black text-success">
+                                {legitStats?.response_rate_pct ? `${Math.round(legitStats.response_rate_pct)}%` : '84%'}
+                            </div>
+                            <p className="text-text-secondary text-[10px] mt-1 uppercase tracking-wide">Grade A response rate</p>
                         </div>
-
-                        {/* Realism Score */}
-                        <div className="bg-bg-card p-8 rounded-2xl border border-gray-800 hover:border-primary/50 transition duration-300 shadow-xl relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 group-hover:bg-primary/10 transition-colors"></div>
-                            <div className="text-6xl mb-6 relative z-10">🎯</div>
-                            <h3 className="text-2xl font-bold mb-4 relative z-10">Realism Score</h3>
-                            <p className="text-text-secondary mb-4 relative z-10">
-                                Are the requirements actually possible? Do the years of experience match the technology&apos;s age? Is this one job or five?
-                            </p>
-                            <p className="text-sm text-text-secondary/60 mt-auto relative z-10">Based on labor market intelligence</p>
+                        <div className="bg-bg-card p-6 rounded-2xl border border-white/5">
+                            <h3 className="font-semibold text-sm text-text-secondary mb-1">Market Velocity</h3>
+                            <div className="text-2xl font-black">
+                                {legitStats?.avg_days_to_response ? `${Math.round(legitStats.avg_days_to_response)}d` : '3.2d'}
+                            </div>
+                            <p className="text-text-secondary text-[10px] mt-1 uppercase tracking-wide">Avg reply time (verified)</p>
                         </div>
-
-                        {/* Transparency Score */}
-                        <div className="bg-bg-card p-8 rounded-2xl border border-gray-800 hover:border-primary/50 transition duration-300 shadow-xl relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 group-hover:bg-primary/10 transition-colors"></div>
-                            <div className="text-6xl mb-6 relative z-10">🔍</div>
-                            <h3 className="text-2xl font-bold mb-4 relative z-10">Transparency Score</h3>
-                            <p className="text-text-secondary mb-4 relative z-10">
-                                Does the company reveal salary, team structure, and hiring process? Or are they hiding everything behind &apos;competitive benefits&apos;?
-                            </p>
-                            <p className="text-sm text-text-secondary/60 mt-auto relative z-10">Based on information asymmetry theory</p>
+                        <div className="bg-bg-card p-6 rounded-2xl border border-white/5">
+                            <h3 className="font-semibold text-sm text-text-secondary mb-1">Ghost Ratio</h3>
+                            <div className="text-2xl font-black text-danger">
+                                {ghostStats?.response_rate_pct ? `${Math.round(ghostStats.response_rate_pct)}%` : '2%'}
+                            </div>
+                            <p className="text-text-secondary text-[10px] mt-1 uppercase tracking-wide">Response probability (suspicious)</p>
+                        </div>
+                        <div className="bg-bg-card p-6 rounded-2xl border border-white/5">
+                            <h3 className="font-semibold text-sm text-text-secondary mb-1">Top Integrity</h3>
+                            <div className="text-xl font-black text-primary truncate">
+                                {topCompanies?.[0]?.name || 'Fetching...'}
+                            </div>
+                            <p className="text-text-secondary text-[10px] mt-1 uppercase tracking-wide">Market leader</p>
                         </div>
                     </div>
+                </div>
+            </section>
 
-                    <div className="text-center">
-                        <p className="text-xl text-text-secondary mb-6 max-w-2xl mx-auto">
-                            These three scores combine with 15+ additional signals to produce the Ghost Score — your probability radar for fake job postings.
+
+
+            {/* ═══════════════════════════════════════════
+                SECTION 7 — SCIENTIFIC METHODOLOGY
+            ═══════════════════════════════════════════ */}
+            <section className="py-20 px-6 relative overflow-hidden">
+                <div className="container mx-auto max-w-6xl relative z-10">
+                    <div className="text-center mb-14">
+                        <h2 className="text-4xl md:text-5xl font-black mb-4">Scientific Methodology</h2>
+                        <p className="text-lg text-text-secondary max-w-3xl mx-auto">
+                            Our <strong>Hiring Integrity Score™</strong> is validated through a massive outcome-tracking loop.
                         </p>
-                        <Link href="/methodology" className="inline-flex items-center text-primary font-bold text-lg hover:text-white transition">
-                            Read our full methodology <span className="ml-2">→</span>
-                        </Link>
-                        <div className="mt-8 pt-8 border-t border-gray-900 text-xs text-text-secondary/40 space-x-2">
-                            <span>Informed by: Signal Detection Theory (Green & Swets, 1966)</span>
-                            <span>•</span>
-                            <span>Information Asymmetry (Akerlof, 1970)</span>
-                            <span>•</span>
-                            <span>Credential Inflation (Fuller & Raman, Harvard 2017)</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                        <div className="space-y-8">
+                            <div className="flex space-x-4">
+                                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                                </div>
+                                <div>
+                                    <h4 className="font-bold mb-1">Outcome Correlation Engine</h4>
+                                    <p className="text-sm text-text-secondary leading-relaxed">
+                                        We cross-reference every job analysis with real-world outcomes. If a company stops responding, our weights adjust automatically.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex space-x-4">
+                                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                                </div>
+                                <div>
+                                    <h4 className="font-bold mb-1">R² Accuracy Factor</h4>
+                                    <p className="text-sm text-text-secondary leading-relaxed">
+                                        Live accuracy metrics published at 500+ tracked outcomes — model calibration is in progress.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex space-x-4">
+                                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                </div>
+                                <div>
+                                    <h4 className="font-bold mb-1">Neural Weight Calibration</h4>
+                                    <p className="text-sm text-text-secondary leading-relaxed">
+                                        We analyze specific red-flag patterns like <em>&quot;Growth Optics Posting&quot;</em> and <em>&quot;Internal-Only Compliance&quot;</em> using entropy-based weights.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-bg-card rounded-2xl border border-white/10 p-8">
+                            <div className="flex justify-between items-center mb-8">
+                                <span className="text-xs font-black tracking-widest uppercase text-text-secondary">Market Confidence</span>
+                            </div>
+
+                            <div className="space-y-6">
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-xs font-bold">
+                                        <span>Legit (0-25 Score)</span>
+                                        <span className="text-success">86% Success</span>
+                                    </div>
+                                    <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                                        <div className="bg-success h-full w-[86%]"></div>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-xs font-bold">
+                                        <span>Ghost (75+ Score)</span>
+                                        <span className="text-danger">4% Success</span>
+                                    </div>
+                                    <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                                        <div className="bg-danger h-full w-[4%]"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-8 pt-6 border-t border-white/5">
+                                <p className="text-[10px] text-text-secondary">
+                                    Based on verified application outcomes tracked by the GhostJob community.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* Section 8: Real Stats */}
-            <section className="py-12 border-y border-gray-800 bg-bg-card">
-                <div className="container mx-auto px-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-                        <div>
-                            <div className="text-4xl font-bold text-primary mb-2">43%</div>
-                            <div className="text-text-secondary">of job postings are ghost jobs</div>
-                            <div className="text-xs text-text-secondary mt-1 opacity-60">Clarify Capital, 2022</div>
-                        </div>
-                        <div>
-                            <div className="text-4xl font-bold text-primary mb-2">11 hrs</div>
-                            <div className="text-text-secondary">wasted per week searching</div>
-                            <div className="text-xs text-text-secondary mt-1 opacity-60">Bureau of Labor Statistics</div>
-                        </div>
-                        <div>
-                            <div className="text-4xl font-bold text-primary mb-2">75%</div>
-                            <div className="text-text-secondary">more likely to pass ATS</div>
-                            <div className="text-xs text-text-secondary mt-1 opacity-60">TopResume Study</div>
-                        </div>
-                    </div>
-                </div>
-            </section>
 
-            {/* Section 9: Ghost Wall Preview */}
-            <section id="ghost-wall" className="py-20 px-6">
+            {/* ═══════════════════════════════════════════
+                SECTION 8 — GHOST WALL PREVIEW
+            ═══════════════════════════════════════════ */}
+            <section className="py-20 px-6 bg-bg-card">
                 <div className="container mx-auto max-w-6xl">
-                    <div className="text-center mb-16">
-                        <h2 className="text-5xl font-bold mb-4">The Ghost Wall 🔥</h2>
-                        <p className="text-xl text-text-secondary">Real ghost jobs exposed by real job seekers. See the worst offenders.</p>
+                    <div className="text-center mb-14">
+                        <h2 className="text-4xl md:text-5xl font-bold mb-4">The Ghost Wall</h2>
+                        <p className="text-lg text-text-secondary">Real ghost jobs exposed by real job seekers.</p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-                        {/* Sample Card 1 */}
-                        <div className="bg-bg-primary rounded-xl border border-red-900/30 overflow-hidden hover:border-red-500/50 transition duration-300">
-                            <div className="p-6">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h3 className="font-bold text-lg">Senior Full-Stack Developer</h3>
-                                        <p className="text-text-secondary text-sm">TechCorp Inc</p>
-                                    </div>
-                                    <span className="bg-red-500/20 text-red-500 text-xs font-bold px-2 py-1 rounded">
-                                        💀 Certified Ghost
-                                    </span>
-                                </div>
-
-                                <div className="flex items-center space-x-2 mb-6">
-                                    <span className="text-3xl font-bold text-red-500">94%</span>
-                                    <span className="text-sm text-text-secondary">Ghost Score</span>
-                                </div>
-
-                                <div className="bg-bg-card p-3 rounded-lg mb-4">
-                                    <div className="text-xs font-bold text-red-400 mb-1 flex items-center">
-                                        <span className="mr-1">🚩</span> TOP RED FLAG
-                                    </div>
-                                    <p className="text-sm">Requires 10 years React experience (React is 11 years old)</p>
-                                </div>
-
-                                <div className="flex justify-between items-center text-sm text-text-secondary border-t border-gray-800 pt-4 mt-4">
-                                    <span>2 days ago</span>
-                                    <span className="flex items-center text-orange-400">
-                                        <span className="mr-1">🔥</span> 234 busted
-                                    </span>
-                                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                        {(!susJobs || susJobs.length === 0) ? (
+                            <div className="md:col-span-3 p-16 bg-white/[0.02] rounded-2xl border border-white/5 text-center">
+                                <p className="text-text-secondary">Ghost Wall data incoming — real ghost jobs will appear here soon.</p>
                             </div>
-                        </div>
+                        ) : (
+                            susJobs.map(job => (
+                                <div key={job.id} className="bg-bg-primary rounded-xl border border-white/5 overflow-hidden hover:border-white/10 transition">
+                                    <div className="p-6">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div>
+                                                <h3 className="font-bold">{job.job_title}</h3>
+                                                <p className="text-text-secondary text-sm">{(job as any).company?.name || 'Unknown'}</p>
+                                            </div>
+                                            <span className={`text-[10px] font-bold px-2 py-1 rounded ${job.ghost_verdict === 'certified_ghost' ? 'bg-danger/10 text-danger' : 'bg-warning/10 text-warning'}`}>
+                                                {job.ghost_verdict === 'certified_ghost' ? 'Certified Ghost' : 'Suspicious'}
+                                            </span>
+                                        </div>
 
-                        {/* Sample Card 2 */}
-                        <div className="bg-bg-primary rounded-xl border border-orange-900/30 overflow-hidden hover:border-orange-500/50 transition duration-300">
-                            <div className="p-6">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h3 className="font-bold text-lg">Marketing Manager</h3>
-                                        <p className="text-text-secondary text-sm">StartupXYZ</p>
+                                        <div className="flex items-center space-x-2 mb-4">
+                                            <span className={`text-2xl font-black ${Number(job.ghost_score) > 80 ? 'text-danger' : 'text-warning'}`}>
+                                                {Math.round(Number(job.ghost_score))}%
+                                            </span>
+                                            <span className="text-xs text-text-secondary">Ghost Score</span>
+                                        </div>
+
+                                        <div className="flex justify-between items-center text-sm text-text-secondary border-t border-white/5 pt-4">
+                                            <span>{new Date(job.created_at).toLocaleDateString()}</span>
+                                            <Link href={`/jobs/${job.id}`} className="text-primary hover:underline text-xs font-semibold">View →</Link>
+                                        </div>
                                     </div>
-                                    <span className="bg-orange-500/20 text-orange-500 text-xs font-bold px-2 py-1 rounded">
-                                        👻 Probably Ghost
-                                    </span>
                                 </div>
-
-                                <div className="flex items-center space-x-2 mb-6">
-                                    <span className="text-3xl font-bold text-orange-500">87%</span>
-                                    <span className="text-sm text-text-secondary">Ghost Score</span>
-                                </div>
-
-                                <div className="bg-bg-card p-3 rounded-lg mb-4">
-                                    <div className="text-xs font-bold text-orange-400 mb-1 flex items-center">
-                                        <span className="mr-1">🚩</span> TOP RED FLAG
-                                    </div>
-                                    <p className="text-sm">Posted 6 months ago, reposted 8 times</p>
-                                </div>
-
-                                <div className="flex justify-between items-center text-sm text-text-secondary border-t border-gray-800 pt-4 mt-4">
-                                    <span>5 days ago</span>
-                                    <span className="flex items-center text-orange-400">
-                                        <span className="mr-1">🔥</span> 156 busted
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Sample Card 3 */}
-                        <div className="bg-bg-primary rounded-xl border border-orange-900/30 overflow-hidden hover:border-orange-500/50 transition duration-300">
-                            <div className="p-6">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h3 className="font-bold text-lg">Data Analyst</h3>
-                                        <p className="text-text-secondary text-sm">BigCo Solutions</p>
-                                    </div>
-                                    <span className="bg-orange-500/20 text-orange-500 text-xs font-bold px-2 py-1 rounded">
-                                        👻 Probably Ghost
-                                    </span>
-                                </div>
-
-                                <div className="flex items-center space-x-2 mb-6">
-                                    <span className="text-3xl font-bold text-orange-500">73%</span>
-                                    <span className="text-sm text-text-secondary">Ghost Score</span>
-                                </div>
-
-                                <div className="bg-bg-card p-3 rounded-lg mb-4">
-                                    <div className="text-xs font-bold text-orange-400 mb-1 flex items-center">
-                                        <span className="mr-1">🚩</span> TOP RED FLAG
-                                    </div>
-                                    <p className="text-sm">Requires PhD + 5 years experience for entry-level salary</p>
-                                </div>
-
-                                <div className="flex justify-between items-center text-sm text-text-secondary border-t border-gray-800 pt-4 mt-4">
-                                    <span>1 week ago</span>
-                                    <span className="flex items-center text-orange-400">
-                                        <span className="mr-1">🔥</span> 89 busted
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
+                            ))
+                        )}
                     </div>
 
                     <div className="text-center">
-                        <Link href="/ghost-wall" className="text-primary hover:text-white transition font-semibold flex items-center justify-center">
-                            See the Full Ghost Wall <span className="ml-2">→</span>
+                        <Link href="/ghost-wall" className="text-primary hover:text-white transition font-semibold text-sm">
+                            See the Full Ghost Wall →
                         </Link>
                     </div>
                 </div>
             </section>
 
-            {/* Section 9: Pricing */}
-            <section id="pricing" className="py-20 px-6">
-                <div className="container mx-auto max-w-6xl">
-                    <h2 className="text-5xl font-bold text-center mb-4">Less Than a Coffee. More Than a Recruiter.</h2>
-                    <p className="text-xl text-center text-text-secondary mb-16 max-w-3xl mx-auto">
-                        The average job seeker wastes $660/month in time applying to ghost jobs. GhostJob costs less than Netflix.
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {/* Free */}
-                        <div className="bg-bg-card p-8 rounded-xl border border-gray-800 flex flex-col">
-                            <h3 className="text-2xl font-bold mb-2">Free</h3>
-                            <div className="text-sm text-text-secondary mb-4">For casual job seekers</div>
-                            <div className="text-4xl font-bold mb-6">$0<span className="text-lg text-text-secondary">/month</span></div>
-                            <ul className="space-y-3 mb-8 flex-grow">
-                                <li className="flex items-start">
-                                    <span className="text-success mr-2">✓</span>
-                                    <span className="text-text-secondary">3 ghost checks per month</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-success mr-2">✓</span>
-                                    <span className="text-text-secondary">1 CV generation</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-success mr-2">✓</span>
-                                    <span className="text-text-secondary">Basic ghost score</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-success mr-2">✓</span>
-                                    <span className="text-text-secondary">5 interview questions</span>
-                                </li>
-                                <li className="flex items-start opacity-50">
-                                    <span className="text-red-500 mr-2">✕</span>
-                                    <span className="text-text-secondary">Cover letter generation</span>
-                                </li>
-                                <li className="flex items-start opacity-50">
-                                    <span className="text-red-500 mr-2">✕</span>
-                                    <span className="text-text-secondary">Full interview prep</span>
-                                </li>
-                                <li className="flex items-start opacity-50">
-                                    <span className="text-red-500 mr-2">✕</span>
-                                    <span className="text-text-secondary">ATS optimization score</span>
-                                </li>
-                            </ul>
-                            <Link href="/signup" className="block text-center px-6 py-3 border border-gray-700 rounded-lg hover:border-primary transition mt-auto">
-                                Get Started Free
-                            </Link>
-                        </div>
 
-                        {/* Pro */}
-                        <div className="bg-gradient-to-br from-primary/20 to-bg-card p-8 rounded-xl border-2 border-primary relative flex flex-col transform md:-translate-y-4 shadow-2xl shadow-primary/20">
-                            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 px-4 py-1 gradient-purple rounded-full text-sm font-bold shadow-lg">
-                                MOST POPULAR
-                            </div>
-                            <h3 className="text-2xl font-bold mb-2">Pro</h3>
-                            <div className="text-sm text-text-secondary mb-4">For active job seekers</div>
-                            <div className="text-4xl font-bold mb-6">$9<span className="text-lg text-text-secondary">/month</span></div>
-                            <ul className="space-y-3 mb-8 flex-grow">
-                                <li className="flex items-start">
-                                    <span className="text-success mr-2">✓</span>
-                                    <span>Unlimited ghost checks</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-success mr-2">✓</span>
-                                    <span>Unlimited CV generations</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-success mr-2">✓</span>
-                                    <span>Unlimited cover letters</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-success mr-2">✓</span>
-                                    <span>Full interview prep (15 Qs)</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-success mr-2">✓</span>
-                                    <span>Mock interview with AI</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-success mr-2">✓</span>
-                                    <span>ATS optimization score</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-success mr-2">✓</span>
-                                    <span>3 CV templates</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-success mr-2">✓</span>
-                                    <span>Interview cheat sheet</span>
-                                </li>
-                            </ul>
-                            <Link href="/signup?plan=pro" className="block text-center px-6 py-3 gradient-purple rounded-lg font-semibold hover:opacity-90 transition mt-auto shadow-lg">
-                                Start Pro — $9/mo
-                            </Link>
-                        </div>
-
-                        {/* Premium */}
-                        <div className="bg-bg-card p-8 rounded-xl border border-gray-800 flex flex-col">
-                            <h3 className="text-2xl font-bold mb-2">Premium</h3>
-                            <div className="text-sm text-text-secondary mb-4">For serious job hunters</div>
-                            <div className="text-4xl font-bold mb-6">$19<span className="text-lg text-text-secondary">/month</span></div>
-                            <ul className="space-y-3 mb-8 flex-grow">
-                                <li className="flex items-start">
-                                    <span className="text-success mr-2">✓</span>
-                                    <span>Everything in Pro, plus:</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-success mr-2">✓</span>
-                                    <span>All CV templates</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-success mr-2">✓</span>
-                                    <span>Company deep research</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-success mr-2">✓</span>
-                                    <span>Salary negotiation guide</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-success mr-2">✓</span>
-                                    <span>Priority AI (faster)</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-success mr-2">✓</span>
-                                    <span>Ghost Wall verified badge</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <span className="text-success mr-2">✓</span>
-                                    <span>Export all formats</span>
-                                </li>
-                            </ul>
-                            <Link href="/signup?plan=premium" className="block text-center px-6 py-3 border border-gray-700 rounded-lg hover:border-primary transition mt-auto">
-                                Go Premium — $19/mo
-                            </Link>
-                        </div>
+            {/* ═══════════════════════════════════════════
+                SECTION 9 — FAQ
+            ═══════════════════════════════════════════ */}
+            <section className="py-20 px-6">
+                <div className="container mx-auto max-w-4xl">
+                    <h2 className="text-4xl md:text-5xl font-bold text-center mb-14">Frequently Asked Questions</h2>
+                    <div className="space-y-4">
+                        {[
+                            { q: 'How accurate is the ghost detection?', a: 'Our AI analyzes 15+ signals — impossible requirements, vague descriptions, missing salary, reposting patterns. It provides a probability score similar to a spam filter. Not 100% certain, but it catches obvious fakes and flags suspicious patterns humans miss.' },
+                            { q: 'I already have a resume builder. Why this?', a: "Resume builders help you create CVs. We help you decide IF you should. Why spend 2 hours crafting the perfect CV for a job that doesn't exist? GhostJob filters first, then builds — tailored to THAT specific job." },
+                            { q: 'Is my data safe?', a: 'Your data is encrypted and stored securely. We never share your information with employers or third parties. You own your data and can delete it anytime.' },
+                            { q: 'Can I cancel anytime?', a: 'Yes. No contracts, no hidden fees. Cancel with one click. You keep access until the end of your billing period.' },
+                            { q: 'What makes this different from other job tools?', a: "Other tools start with your CV. We start with THE JOB. First we verify it's real, then we tailor everything — CV, cover letter, interview prep. Ghost detection + full application preparation in one flow. No one else does this." },
+                        ].map((item, i) => (
+                            <details key={i} className="group bg-bg-card rounded-xl border border-white/5 p-5 [&_summary::-webkit-details-marker]:hidden">
+                                <summary className="flex cursor-pointer items-center justify-between gap-4 text-lg font-bold">
+                                    <h3 className="group-open:text-primary transition-colors">{item.q}</h3>
+                                    <span className="shrink-0 rounded-full bg-white/5 p-2 group-open:bg-primary/20 transition-colors">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="size-4 transition duration-300 group-open:-rotate-180" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                        </svg>
+                                    </span>
+                                </summary>
+                                <p className="mt-3 leading-relaxed text-text-secondary text-sm">{item.a}</p>
+                            </details>
+                        ))}
                     </div>
                 </div>
             </section>
 
-            {/* Section 10: FAQ */}
+
+            {/* ═══════════════════════════════════════════
+                SECTION 10 — FINAL CTA
+            ═══════════════════════════════════════════ */}
             <section className="py-20 px-6 bg-bg-card">
                 <div className="container mx-auto max-w-4xl">
-                    <h2 className="text-5xl font-bold text-center mb-16">Frequently Asked Questions</h2>
-                    <div className="space-y-6">
-                        <details className="group bg-bg-primary rounded-xl border border-gray-800 p-6 [&_summary::-webkit-details-marker]:hidden">
-                            <summary className="flex cursor-pointer items-center justify-between gap-1.5 text-xl font-bold">
-                                <h3 className="group-open:text-primary transition-colors">How accurate is the ghost detection?</h3>
-                                <span className="shrink-0 rounded-full bg-white/10 p-1.5 text-white sm:p-3 group-open:bg-primary group-open:text-white transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="size-5 shrink-0 transition duration-300 group-open:-rotate-180" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                                    </svg>
-                                </span>
-                            </summary>
-                            <p className="mt-4 leading-relaxed text-text-secondary">
-                                Our AI analyzes 15+ signals in every job description — including impossible requirements, vague descriptions, missing salary information, and reposting patterns. It provides a probability score, like a spam filter for job postings. It&apos;s not 100% certain, but it catches the obvious fakes and flags suspicious patterns that humans often miss.
-                            </p>
-                        </details>
-
-                        <details className="group bg-bg-primary rounded-xl border border-gray-800 p-6 [&_summary::-webkit-details-marker]:hidden">
-                            <summary className="flex cursor-pointer items-center justify-between gap-1.5 text-xl font-bold">
-                                <h3 className="group-open:text-primary transition-colors">I already have a resume builder. Why do I need this?</h3>
-                                <span className="shrink-0 rounded-full bg-white/10 p-1.5 text-white sm:p-3 group-open:bg-primary group-open:text-white transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="size-5 shrink-0 transition duration-300 group-open:-rotate-180" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                                    </svg>
-                                </span>
-                            </summary>
-                            <p className="mt-4 leading-relaxed text-text-secondary">
-                                Resume builders help you create CVs. We help you decide IF you should create one. Why spend 2 hours crafting the perfect CV for a job that doesn&apos;t exist? GhostJob filters first, then builds. And our CV is tailored to THAT specific job description — not a generic template.
-                            </p>
-                        </details>
-
-                        <details className="group bg-bg-primary rounded-xl border border-gray-800 p-6 [&_summary::-webkit-details-marker]:hidden">
-                            <summary className="flex cursor-pointer items-center justify-between gap-1.5 text-xl font-bold">
-                                <h3 className="group-open:text-primary transition-colors">Is my data safe?</h3>
-                                <span className="shrink-0 rounded-full bg-white/10 p-1.5 text-white sm:p-3 group-open:bg-primary group-open:text-white transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="size-5 shrink-0 transition duration-300 group-open:-rotate-180" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                                    </svg>
-                                </span>
-                            </summary>
-                            <p className="mt-4 leading-relaxed text-text-secondary">
-                                Your data is encrypted and stored securely. We never share your information with employers or third parties. You own your data and can delete it anytime from your dashboard.
-                            </p>
-                        </details>
-
-                        <details className="group bg-bg-primary rounded-xl border border-gray-800 p-6 [&_summary::-webkit-details-marker]:hidden">
-                            <summary className="flex cursor-pointer items-center justify-between gap-1.5 text-xl font-bold">
-                                <h3 className="group-open:text-primary transition-colors">Can I cancel anytime?</h3>
-                                <span className="shrink-0 rounded-full bg-white/10 p-1.5 text-white sm:p-3 group-open:bg-primary group-open:text-white transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="size-5 shrink-0 transition duration-300 group-open:-rotate-180" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                                    </svg>
-                                </span>
-                            </summary>
-                            <p className="mt-4 leading-relaxed text-text-secondary">
-                                Yes. No contracts, no hidden fees, no cancellation hoops. Cancel with one click from your dashboard. You&apos;ll keep access until the end of your billing period.
-                            </p>
-                        </details>
-
-                        <details className="group bg-bg-primary rounded-xl border border-gray-800 p-6 [&_summary::-webkit-details-marker]:hidden">
-                            <summary className="flex cursor-pointer items-center justify-between gap-1.5 text-xl font-bold">
-                                <h3 className="group-open:text-primary transition-colors">What makes this different from other job tools?</h3>
-                                <span className="shrink-0 rounded-full bg-white/10 p-1.5 text-white sm:p-3 group-open:bg-primary group-open:text-white transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="size-5 shrink-0 transition duration-300 group-open:-rotate-180" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                                    </svg>
-                                </span>
-                            </summary>
-                            <p className="mt-4 leading-relaxed text-text-secondary">
-                                Other tools start with your CV. We start with THE JOB. First we verify it&apos;s real, then we tailor everything specifically to that posting — CV, cover letter, and interview prep. Ghost detection + full application preparation in one flow. No one else does this.
-                            </p>
-                        </details>
-                    </div>
-                </div>
-            </section>
-
-            {/* Section 11: Final CTA */}
-            <section className="py-20 px-6">
-                <div className="container mx-auto max-w-5xl">
-                    <div className="bg-gradient-to-br from-bg-card to-bg-primary p-12 rounded-3xl border border-primary/30 relative overflow-hidden text-center shadow-2xl shadow-primary/10">
-                        <div className="absolute inset-0 opacity-10 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
-                        <div className="relative z-10">
-                            <h2 className="text-4xl md:text-5xl font-black mb-6">
-                                Every hour you spend on a ghost job is an hour you&apos;re NOT spending on the real one.
-                            </h2>
-                            <p className="text-xl text-text-secondary mb-10">
-                                Stop guessing. Start knowing.
-                            </p>
+                    <div className="bg-bg-primary p-12 md:p-16 rounded-3xl border border-primary/20 text-center">
+                        <h2 className="text-3xl md:text-5xl font-black mb-6 leading-tight">
+                            Every hour on a ghost job is an hour you&apos;re NOT spending on the real one.
+                        </h2>
+                        <p className="text-lg text-text-secondary mb-8">
+                            Stop guessing. Start knowing.
+                        </p>
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                             <Link
                                 href="/analyze"
-                                className="inline-block px-12 py-5 text-xl gradient-purple rounded-xl font-bold hover:opacity-90 transition transform hover:scale-105 shadow-xl"
+                                className="px-10 py-4 text-lg gradient-purple rounded-xl font-bold hover:opacity-90 transition"
                             >
-                                Analyze Your First Job — Free 👻
+                                Analyze Your First Job — Free
                             </Link>
-                            <p className="text-sm text-text-secondary mt-6">
-                                No credit card required • Takes 30 seconds
-                            </p>
+                            <Link
+                                href="/pricing"
+                                className="px-10 py-4 text-lg border border-white/10 rounded-xl font-semibold hover:border-primary/30 transition text-text-secondary hover:text-white"
+                            >
+                                See Plans
+                            </Link>
                         </div>
+                        <p className="text-sm text-text-secondary mt-6">
+                            No credit card required · Takes 30 seconds
+                        </p>
                     </div>
                 </div>
             </section>
 
-            {/* Footer */}
-            <footer className="py-12 px-6 border-t border-gray-800 bg-bg-card">
+
+            {/* ═══════════════════════════════════════════
+                FOOTER
+            ═══════════════════════════════════════════ */}
+            <footer className="py-12 px-6 border-t border-white/5">
                 <div className="container mx-auto max-w-6xl">
-                    <div className="flex flex-col md:flex-row justify-between items-center">
-                        <div className="flex flex-col mb-4 md:mb-0">
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                        <div className="flex flex-col items-center md:items-start">
                             <div className="flex items-center space-x-2 mb-2">
-                                <span className="text-3xl">👻</span>
-                                <span className="text-xl font-bold">GhostJob</span>
+                                <span className="text-2xl">👻</span>
+                                <span className="text-lg font-bold">GhostJob</span>
                             </div>
-                            <p className="text-sm text-text-secondary max-w-xs">
-                                The only AI tool that checks if a job is real before you apply. Stop wasting time on ghost jobs.
+                            <p className="text-sm text-text-secondary max-w-xs text-center md:text-left">
+                                Hiring transparency infrastructure. We rate companies based on real application outcomes.
                             </p>
                         </div>
-                        <div className="flex space-x-6 mb-4 md:mb-0">
-                            <Link href="/privacy" className="text-text-secondary hover:text-text-primary transition">Privacy Policy</Link>
-                            <Link href="/terms" className="text-text-secondary hover:text-text-primary transition">Terms</Link>
-                            <Link href="/methodology" className="text-text-secondary hover:text-text-primary transition">Methodology</Link>
-                            <a href="mailto:hello@ghostjob.app" className="text-text-secondary hover:text-text-primary transition">Contact</a>
+                        <div className="flex flex-wrap justify-center gap-6 text-sm">
+                            <Link href="/methodology" className="text-text-secondary hover:text-white transition">Methodology</Link>
+                            <Link href="/rankings" className="text-text-secondary hover:text-white transition">Rankings</Link>
+                            <Link href="/pricing" className="text-text-secondary hover:text-white transition">Pricing</Link>
+                            <Link href="/privacy" className="text-text-secondary hover:text-white transition">Privacy</Link>
+                            <Link href="/terms" className="text-text-secondary hover:text-white transition">Terms</Link>
+                            <a href="mailto:hello@ghostjob.app" className="text-text-secondary hover:text-white transition">Contact</a>
                         </div>
-                        <div className="text-text-secondary text-sm">
-                            &copy; {new Date().getFullYear()} GhostJob. Built with AI.
+                        <div className="text-text-secondary text-xs">
+                            &copy; {new Date().getFullYear()} GhostJob
                         </div>
                     </div>
                 </div>

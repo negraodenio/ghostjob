@@ -1,38 +1,161 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>GhostJob</title>
   <link rel="stylesheet" href="popup.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+    rel="stylesheet">
 </head>
+
 <body>
-  <div class="header">
-    <span class="logo">👻</span>
-    <span class="title">GhostJob</span>
-  </div>
-  <div class="content" id="content">
-    <p class="subtitle">Open a job description on LinkedIn, Indeed, or Glassdoor to verify it.</p>
-    
-    <button id="analyze-btn" class="btn primary">Detect Ghost Job</button>
-    
-    <div id="loading" class="hidden">
-      <div class="spinner"></div>
-      <p class="subtitle">Analyzing 15+ red flags...</p>
-    </div>
-    
-    <div id="result" class="hidden">
-      <div class="score-container">
-        <span id="ghost-score" class="score">--</span>
-        <span class="score-label">Ghost Score</span>
+  <div class="extension-container">
+    <!-- Ambient Blooms -->
+    <div class="ambient-bloom top-bloom"></div>
+    <div class="ambient-bloom bottom-bloom"></div>
+
+    <!-- Header -->
+    <header class="header">
+      <div class="logo-group">
+        <div class="logo-circle">
+          <span style="font-size: 18px;">👻</span>
+        </div>
+        <h1>GhostJob</h1>
       </div>
-      <h3 id="verdict"></h3>
-      <p id="headline"></p>
-      <button id="full-report-btn" class="btn secondary">View Full Report</button>
-    </div>
-    
-    <div id="error" class="hidden error-text"></div>
+      <button class="settings-btn" id="settings-btn">
+        <span class="material-symbols-outlined">settings</span>
+      </button>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="main-content" id="main-content">
+
+      <!-- ====================== -->
+      <!-- VIEW: INITIAL          -->
+      <!-- ====================== -->
+      <div id="initial-view" class="view">
+        <div class="hero-illustration">👻</div>
+        <p class="subtitle">Open a job posting on LinkedIn, Indeed, or Glassdoor to start the ghost scan.</p>
+
+        <div class="action-area">
+          <button id="analyze-btn" class="btn-primary-gradient">
+            <span>Detect Ghost Job</span>
+            <div class="btn-icon-pill">
+              <span class="material-symbols-outlined">search</span>
+            </div>
+          </button>
+          <button id="save-profile-btn" class="btn-secondary-glass hidden">
+            <span>Save My LinkedIn Profile</span>
+            <span class="material-symbols-outlined">person</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ====================== -->
+      <!-- VIEW: LOADING          -->
+      <!-- ====================== -->
+      <div id="loading" class="view hidden">
+        <div class="loading-animation">
+          <div class="spinner-ring"></div>
+          <div class="spinner-core">
+            <span class="material-symbols-outlined pulse">radar</span>
+          </div>
+        </div>
+        <p class="loading-text">Scanning job listing...</p>
+        <p class="loading-subtext">Analysing description, salary signals and company data.</p>
+      </div>
+
+      <!-- ====================== -->
+      <!-- VIEW: RESULT           -->
+      <!-- ====================== -->
+      <div id="result" class="view hidden">
+
+        <!-- Glass Card: Score + Job Context -->
+        <div class="glass-card">
+
+          <!-- Circular Score Gauge -->
+          <div class="score-hero">
+            <div class="progress-container">
+              <svg class="progress-svg" viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="54" class="progress-bg" stroke-linecap="round" stroke-width="8" fill="none">
+                </circle>
+                <circle cx="60" cy="60" r="54" class="progress-bar" id="score-circle" stroke-dasharray="339.292"
+                  stroke-dashoffset="339.292" stroke-linecap="round" stroke-width="8" fill="none"></circle>
+              </svg>
+              <div class="score-inner">
+                <span class="score-value" id="ghost-score">--</span>
+                <span id="status-pill" class="score-label">Ghost Score</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Job Info -->
+          <div class="job-context">
+            <!-- Company Logo -->
+            <div class="company-logo-wrap">
+              <div class="company-logo-bg">
+                <img id="company-logo" src="https://ui-avatars.com/api/?name=Co&background=1e293b&color=fff&size=128"
+                  onerror="this.src='https://ui-avatars.com/api/?name=Co&background=1e293b&color=fff&size=128'"
+                  alt="Company">
+              </div>
+              <div class="company-badge" id="company-badge">
+                <span class="material-symbols-outlined">priority_high</span>
+              </div>
+            </div>
+
+            <!-- Title + Meta -->
+            <h2 class="job-title" id="job-title-display">Job Position</h2>
+            <div class="job-meta">
+              <span id="company-name-display">Company</span>
+              <span class="dot-sep">·</span>
+              <span id="job-location">Remote</span>
+            </div>
+
+            <!-- Metadata Chips -->
+            <div class="chips-row">
+              <div class="chip" id="posted-chip">
+                <span class="material-symbols-outlined">schedule</span>
+                <span id="posted-time">--</span>
+              </div>
+              <div class="chip" id="recruiter-chip">
+                <span class="material-symbols-outlined">group_off</span>
+                <span id="recruiter-type">--</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ghost Advice (collapsible) -->
+          <div id="advice-container" class="advice-box hidden">
+            <span class="material-symbols-outlined advice-icon">lightbulb</span>
+            <div id="ghost-advice" class="advice-text"></div>
+          </div>
+
+        </div><!-- /glass-card -->
+      </div>
+      <!-- /result -->
+
+    </main>
+
+    <!-- Footer Actions -->
+    <footer class="footer">
+      <button id="full-report-btn" class="btn-primary-gradient hidden">
+        <span>View Full Report</span>
+        <div class="btn-icon-pill">
+          <span class="material-symbols-outlined">arrow_forward</span>
+        </div>
+      </button>
+      <button id="view-dashboard" class="footer-link">
+        <span class="material-symbols-outlined">history</span>
+        <span>View Scan History</span>
+      </button>
+    </footer>
   </div>
+
+  <!-- Error Toast -->
+  <div id="error" class="error-toast hidden"></div>
+
   <script src="popup.js"></script>
 </body>
+
 </html>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getLLMResponse, createConversation } from '@/lib/llm';
 import { checkRateLimit, incrementAnalysisCount } from '@/lib/rate-limit';
+import crypto from 'crypto';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -9,105 +10,370 @@ export const dynamic = 'force-dynamic';
 interface RedFlag {
     title: string;
     explanation: string;
-    why_it_matters: string;
-    severity: 'high' | 'medium' | 'low';
+    severity?: 'high' | 'medium' | 'low';
+    weight: number;
 }
 
 interface GreenFlag {
     title: string;
     explanation: string;
-    why_good: string;
+    weight?: number;
 }
 
 interface JobQuality {
     clarity: number;
     realism: number;
     transparency: number;
-    overall: number;
 }
 
 interface GhostAnalysisResult {
     company_name: string;
     job_title: string;
+    confidence_score: number;
+    posting_age_days: number;
     ghost_score: number;
     ghost_verdict: 'legit' | 'sus' | 'ghost' | 'certified_ghost';
     ghost_headline: string;
     ghost_roast: string;
+    top_reasons: string[];
+    scoring_breakdown: {
+        base_score: number;
+        age_multiplier: number;
+        red_flags_total_points: number;
+        green_flags_discount: number;
+        cross_validation_penalty: number;
+        final_score: number;
+    };
+    job_quality: JobQuality & { overall: number };
+    deep_analysis: {
+        content_quality: string;
+        risk_factors: string;
+        credibility_signals: string;
+        market_context?: string;
+    };
+    recommendation: {
+        action: 'apply_now' | 'research_first' | 'skip' | 'avoid' | 'report_scam';
+        next_steps: string;
+        warning_level: 'safe' | 'caution' | 'danger' | 'critical';
+        time_investment?: number;
+    };
     red_flags: RedFlag[];
     green_flags: GreenFlag[];
-    job_quality: JobQuality;
-    ghost_advice: string;
+    combo_flags: {
+        detected: string[];
+        auto_verdict_triggered: boolean;
+        explanation: string;
+    };
+    temporal_analysis?: {
+        posted_days_ago: number;
+        age_category: string;
+        repost_detected: boolean;
+        repost_count: number;
+    };
 }
 
-const GHOST_ANALYSIS_PROMPT = `You are an expert HR analyst and job market researcher specializing in detecting ghost job postings.
+const GHOST_ANALYSIS_PROMPT = `Analyze this job description for signs of being a ghost job with extreme precision.
 
-Analyze this job description for signs of being a ghost job (fake posting not intended to fill a real position).
+# CONTEXT (CRITICAL HINTS)
+- Job Title: {title_hint}
+- Company: {company_hint}
+- Time Posted: {posted_hint} ← PARSE THIS for age calculation
 
-Check for these 15+ red flags:
-1. Impossible requirements (e.g., 10 years experience in technology that's only 5 years old)
-2. Unicorn candidate syndrome (too many unrelated skills required)
-3. Vague responsibilities ("various tasks", "other duties as assigned" without specifics)
-4. Missing salary/compensation information
-5. Excessive buzzwords without substance
-6. Junior pay expectations + senior requirements mismatch
-7. Signs of reposting (stale language patterns, "ongoing need")
-8. Generic copy-paste description (could apply to any company)
-9. No team structure or reporting manager mentioned
-10. "Fast-paced environment" without any specifics about the work
-11. Says remote but requires specific physical location
-12. 20+ requirement bullet points
-13. No benefits, growth, or career path mentioned
-14. Contradictory requirements
-15. Generic company description (could be any company in the industry)
+# MISSION
+Detect impossible requirements, vague language, temporal red flags, phishing, and "Evergreen Fake Hiring" patterns.
 
-Also identify green flags (positive signals):
-- Specific technical stack mentioned
-- Clear day-to-day responsibilities
-- Named team members or reporting structure
-- Transparent salary range
-- Realistic requirements
-- Detailed company information
-- Clear application process
+---
 
-For each flag found, provide:
-- Title (brief)
-- Explanation (one sentence)
-- Why It Matters/Why Good: A short sentence explaining the impact on the candidate
-- Severity: high/medium/low (for red flags only)
+## STEP 1: TEMPORAL ANALYSIS (CRITICAL)
 
-Calculate sub-scores (0-100):
-- Clarity: How well-defined are the roles and responsibilities?
-- Realism: Are the requirements realistic and achievable?
-- Transparency: Is compensation and company info transparent?
-- Overall Ghost Score: 0-100 (0 = definitely real, 100 = definitely ghost)
+**Parse {posted_hint} to extract posting age in days.**
 
-Determine verdict:
-- legit (0-30): This looks like a real job
-- sus (31-60): Some red flags but might be real
-- ghost (61-85): Likely a ghost job
-- certified_ghost (86-100): Definitely a ghost job
+Example inputs:
+- "2 days ago" → 2 days
+- "Posted 3 months ago" → ~90 days
+- "6w ago" → ~42 days
 
-Generate Headline & Roast/Hype:
-- ghost_headline:
-  - If score > 60: A snappy, snarky 3-5 word headline (e.g., "Run Away Fast 🚩", "Spectral Nonsense 👻")
-  - If score <= 60: A positive, encouraging headline (e.g., "Looks Promising! 🚀", "Apply Now! ✅")
-- ghost_roast:
-  - If score > 60: 2-3 sentences roasting the job posting (funny, sarcastic, but not mean)
-  - If score <= 60: 2-3 sentences hyping up the job and why it looks good
+**Apply Age Multiplier:**
+\`\`\`
+0-7 days:    1.0x (fresh, normal)
+8-30 days:   1.1x (slightly stale)
+31-60 days:  1.4x (suspicious)
+61-90 days:  1.7x (very suspicious)  
+90+ days:    2.2x (EXTREME red flag)
+\`\`\`
 
-Return ONLY valid JSON in this exact format:
+If "reposted" appears → add +0.3x to multiplier
+
+---
+
+## STEP 2: TECH REALITY CHECK (KNOWLEDGE BASE)
+
+**Technology Age Reference:**
+- React: 2013 | Vue: 2014 | Flutter: 2017 | Swift: 2014
+- Kubernetes: 2014 | TypeScript: 2012 | Next.js: 2016
+- GPT/LLMs: 2022 | Rust: 2010 | Go: 2009
+
+**RULE:**
+IF (required_years > tech_age) → **WEIGHT 5 (CRITICAL)** "Impossible Requirements"
+
+---
+
+## STEP 3: STARTUP CONTEXT DETECTION
+
+IF detected as:
+- < 30 employees OR
+- "Seed/Series A" OR  
+- "Early Stage Startup" OR
+- Founded < 2 years ago
+
+**THEN:**
+- Reduce weight of "Vague Responsibilities" by 50%
+- Reduce weight of "Unicorn Syndrome" by 30%
+- Startups naturally have fluid roles
+
+---
+
+## STEP 4: RED FLAGS DETECTION
+
+### 🔴 WEIGHT 5 (CRITICAL - 20pts each)
+
+1. **Impossible Tech Requirements**
+   - Required experience > technology age
+   
+2. **Phishing Signals**
+   - SSN/ID requested before interview
+   - Personal banking info upfront
+   
+3. **Extreme Title/Description Mismatch**
+   - "Junior" title but requires "10+ years"
+   - "Entry-level" but needs "Lead 5+ people"
+
+4. **Ancient Posting**
+   - 90+ days old (auto-detected from {posted_hint})
+   
+5. **Payment/Fee Required**
+   - Training fee
+   - "Investment required"
+
+---
+
+### 🟠 WEIGHT 3 (HIGH - 15pts each)
+
+6. **Missing Compensation**
+   - No salary range at all
+   
+7. **Unicorn Syndrome**
+   - 8+ unrelated skills required
+   - Expert in competing frameworks (React + Angular + Vue)
+
+8. **Salary Absurdity**
+   - Range > 3x difference ("$40k-$150k")
+   - Senior title with junior pay
+
+9. **Stale Posting**
+   - 60-89 days old
+   
+10. **Multiple Reposts**
+    - Text mentions "reposted" 2+ times
+    
+11. **No Company Presence**
+    - No verifiable website
+    - No LinkedIn page
+    - Zero online footprint
+
+12. **Staffing Agency Vagueness**
+    - "Hiring for client" with zero client details
+
+---
+
+### 🟡 WEIGHT 2 (MEDIUM - 10pts each)
+
+13. **Vague Responsibilities**
+    - "Various tasks as assigned"
+    - Only generic bullets
+    
+14. **Buzzword Overload**
+    - 5+ of: rockstar, ninja, guru, disruptive, synergy
+
+15. **Title/Description Contradiction**
+    - Title says "Remote" but description requires relocation
+    - Different seniority levels
+
+16. **No Interview Process**
+    - Zero mention of hiring steps
+
+17. **Generic Company Bio**
+    - Copy-paste boilerplate
+
+---
+
+### 🟢 WEIGHT 1 (LOW - 5pts each)
+
+18. **Robotic/Template Tone**
+    - Excessive passive voice
+    - Repetitive sentence structures
+
+19. **Cliché Overload**
+    - "Fast-paced environment"
+    - "We're like a family"
+    - "Wear many hats"
+
+20. **No Team/Manager Named**
+    - Generic "HR team" contact
+    - noreply@ email
+
+---
+
+## STEP 5: GREEN FLAGS (Subtract points)
+
+### ✅ WEIGHT -15pts each
+
+1. **Transparent Compensation**
+   - Specific salary range listed
+   
+2. **Named Personnel**
+   - Hiring manager name + LinkedIn
+   
+3. **Specific Tech Stack**
+   - Exact versions ("React 18, TypeScript 5.2")
+   
+4. **Detailed Interview Process**
+   - "3 rounds: technical, behavioral, cultural"
+
+5. **Recent Company News**
+   - Verifiable recent event mentioned
+
+---
+
+## STEP 6: COMBO DETECTION (Auto-Verdicts)
+
+**These combinations BYPASS normal scoring:**
+
+### 🚨 INSTANT CERTIFIED_GHOST:
+- Missing salary + 90+ days old + vague duties
+- Impossible requirements + no company presence + 60+ days
+- Phishing signals + third-party redirect
+
+### ⚠️ INSTANT GHOST (set score to 75):
+- No salary + unicorn syndrome + 60+ days stale
+- Staffing agency + no client + 45+ days
+
+### 🆘 SCAM WARNING (special flag):
+- Payment required + "work from home" emphasis
+- Personal banking info before offer
+
+---
+
+## STEP 7: CROSS-VALIDATION
+
+Check for internal contradictions:
+- Title seniority ≠ description seniority → +15pts
+- Location contradiction (remote vs relocate) → +15pts
+- Salary in title ≠ description → +10pts
+
+---
+
+## STEP 8: FINAL SCORING
+\`\`\`
+BASE_SCORE = Sum(RedFlagWeights) - Sum(GreenFlagWeights)
+FINAL_SCORE = min(100, max(0, BASE_SCORE × AgeMultiplier))
+\`\`\`
+
+### VERDICT THRESHOLDS:
+\`\`\`
+0-25:   legit (apply with confidence)
+26-50:  sus (research company first)
+51-75:  ghost (probably fake, low priority)
+76-100: certified_ghost (definitely fake, avoid)
+\`\`\`
+
+---
+
+## STEP 9: JSON OUTPUT
+\`\`\`json
 {
-  "company_name": "extracted company name or 'Unknown Company'",
-  "job_title": "extracted job title or 'Unknown Position'",
+  "company_name": "string",
+  "job_title": "string",
+  "posting_age_days": 0,
   "ghost_score": 0-100,
   "ghost_verdict": "legit|sus|ghost|certified_ghost",
-  "ghost_headline": "snappy headline",
-  "ghost_roast": "roast paragraph (or hype paragraph)",
-  "red_flags": [{"title": "...", "explanation": "...", "why_it_matters": "...", "severity": "high|medium|low"}],
-  "green_flags": [{"title": "...", "explanation": "...", "why_good": "..."}],
-  "job_quality": {"clarity": 0-100, "realism": 0-100, "transparency": 0-100, "overall": 0-100},
-  "ghost_advice": "brief advice for the job seeker"
-}`;
+  "ghost_headline": "8-12 word punchy summary",
+  "ghost_roast": "2-3 sentences. Witty for ghosts, encouraging for legit",
+  "top_reasons": ["Reason 1", "Reason 2", "Reason 3"],
+  
+  "scoring_breakdown": {
+    "base_score": 0,
+    "age_multiplier": 1.0,
+    "red_flags_total": 0,
+    "green_flags_discount": 0,
+    "final_score": 0
+  },
+  
+  "job_quality": {
+    "clarity": 0-100,
+    "realism": 0-100,
+    "transparency": 0-100,
+    "overall": 0-100
+  },
+  
+  "deep_analysis": {
+    "content_quality": "2-3 sentences on authenticity",
+    "risk_factors": "Top 3 red flags found",
+    "credibility_signals": "Positive indicators (if any)"
+  },
+  
+  "recommendation": {
+    "action": "apply_now|research_first|skip|avoid",
+    "next_steps": "Specific actionable advice",
+    "warning_level": "low|medium|high|critical"
+  },
+  
+  "red_flags": [
+    {
+      "title": "Flag name",
+      "explanation": "Why triggered",
+      "weight": 1-5,
+      "severity": "critical|high|medium|low"
+    }
+  ],
+  
+  "green_flags": [
+    {
+      "title": "Positive signal",
+      "explanation": "What was good",
+      "weight": 1-5
+    }
+  ],
+  
+  "combo_flags": {
+    "detected": ["combo_type"],
+    "auto_verdict_triggered": false,
+    "explanation": "Why combo is dangerous"
+  }
+}
+\`\`\`
+
+---
+
+## TONE GUIDELINES
+
+**For legit jobs (0-25):**
+- Encouraging but realistic
+- "This looks solid. Here's what stood out..."
+
+**For sus jobs (26-50):**
+- Balanced, analytical
+- "Some red flags. Here's what to verify..."
+
+**For ghost jobs (51-75):**
+- Direct but helpful
+- "High probability of being fake. Here's why..."
+
+**For certified ghost (76-100):**
+- Protective, firm
+- "This is a ghost job. Don't waste your time."
+
+`;
 
 export async function POST(request: NextRequest) {
     try {
@@ -168,9 +434,14 @@ export async function POST(request: NextRequest) {
 
         // Call LLM for analysis
         console.log('[API] Starting ghost job analysis...');
+        const fullPrompt = GHOST_ANALYSIS_PROMPT
+            .replace('{title_hint}', body.title_hint || 'None')
+            .replace('{company_hint}', body.company_hint || 'None')
+            .replace('{posted_hint}', body.posted_hint || 'Just now');
+
         let aiResponse = await getLLMResponse(
-            createConversation(GHOST_ANALYSIS_PROMPT, finalJobDescription),
-            { temperature: 0.7, maxTokens: 3000 }
+            createConversation(fullPrompt, finalJobDescription),
+            { temperature: 0.7, maxTokens: 4000 }
         );
 
         console.log('[API] Raw AI response:', aiResponse);
@@ -182,12 +453,29 @@ export async function POST(request: NextRequest) {
         // Parse AI response
         let analysisResult: GhostAnalysisResult;
         try {
+            // Check if AI explicitly rejected it (e.g. login page detected)
+            if (aiResponse.includes('NOT A JOB DESCRIPTION') || aiResponse.includes('LOGIN PAGE')) {
+                return NextResponse.json(
+                    { error: 'Facepalm! 🤦‍♂️ O link enviado parece ser uma página de login ou conteúdo privado. Tente copiar e colar a descrição manualmente na extensão.' },
+                    { status: 400 }
+                );
+            }
+
             analysisResult = JSON.parse(aiResponse);
         } catch (parseError) {
             console.error('[API] Failed to parse AI response:', parseError);
             console.error('[API] Response that failed parsing:', aiResponse);
+
+            // If it's not JSON but we can see a verdict, try to be helpful
+            if (aiResponse.length < 500) {
+                return NextResponse.json(
+                    { error: `Ocorreu um erro na análise: ${aiResponse.substring(0, 100)}... Tente novamente.` },
+                    { status: 500 }
+                );
+            }
+
             return NextResponse.json(
-                { error: 'Failed to analyze job posting. Please try again.' },
+                { error: 'Falha ao processar a resposta da IA. Tente novamente em instantes.' },
                 { status: 500 }
             );
         }
@@ -218,8 +506,79 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        // Create or Find Company (Normalization)
+        const company_name_raw = analysisResult.company_name || 'Unknown Company';
+        const normalized_company_name = company_name_raw
+            .toLowerCase()
+            .trim()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/[\s_-]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+
+        let companyId = null;
+
+        if (normalized_company_name) {
+            // Check if company exists
+            const { data: existingCompany } = await supabase
+                .from('companies')
+                .select('id')
+                .eq('normalized_name', normalized_company_name)
+                .single();
+
+            if (existingCompany) {
+                companyId = existingCompany.id;
+            } else {
+                // Create new company
+                const { data: newCompany, error: companyError } = await supabase
+                    .from('companies')
+                    .insert({
+                        name: analysisResult.company_name,
+                        normalized_name: normalized_company_name
+                    })
+                    .select('id')
+                    .single();
+
+                if (!companyError && newCompany) {
+                    companyId = newCompany.id;
+                }
+            }
+        }
+
+        // Generate Job Description Hash for deduplication
+        const jd_hash = crypto
+            .createHash('sha256')
+            .update(finalJobDescription.trim())
+            .digest('hex');
+
+        // 5. Upsert Job (centralizing analysis per JD)
+        const { data: job, error: jobError } = await supabase
+            .from('jobs')
+            .upsert({
+                company_id: companyId,
+                job_title: analysisResult.job_title,
+                job_description: finalJobDescription.trim(),
+                job_description_hash: jd_hash,
+                ghost_score: analysisResult.ghost_score,
+                ghost_verdict: analysisResult.ghost_verdict,
+                confidence_score: analysisResult.confidence_score,
+                clarity_score: analysisResult.job_quality.clarity,
+                realism_score: analysisResult.job_quality.realism,
+                transparency_score: analysisResult.job_quality.transparency,
+                red_flags: analysisResult.red_flags,
+                green_flags: analysisResult.green_flags,
+                last_seen_at: new Date().toISOString(),
+            }, { onConflict: 'job_description_hash' })
+            .select()
+            .single();
+
+        if (jobError) {
+            console.error('[API] Job upsert error:', jobError);
+        }
+
         const applicationData = {
             user_id: user?.id || null,
+            job_id: job?.id || null,
+            company_id: companyId,
             job_description: finalJobDescription.trim(),
             job_url: job_url || null,
             company_name: analysisResult.company_name,
@@ -231,7 +590,16 @@ export async function POST(request: NextRequest) {
             red_flags: analysisResult.red_flags,
             green_flags: analysisResult.green_flags,
             job_quality: analysisResult.job_quality,
-            ghost_advice: analysisResult.ghost_advice,
+            ghost_advice: analysisResult.recommendation.next_steps, // Map to existing field
+            parsed_jd: {
+                posting_age_days: analysisResult.posting_age_days,
+                confidence_score: analysisResult.confidence_score,
+                scoring_breakdown: analysisResult.scoring_breakdown,
+                deep_analysis: analysisResult.deep_analysis,
+                recommendation: analysisResult.recommendation,
+                combo_flags: analysisResult.combo_flags,
+                temporal_analysis: analysisResult.temporal_analysis
+            },
             is_public: false,
             upvotes: 0,
         };
@@ -254,8 +622,6 @@ export async function POST(request: NextRequest) {
         if (user?.id) {
             await incrementAnalysisCount(user.id);
         }
-
-        console.log('[API] Analysis complete:', application.id);
 
         return NextResponse.json({
             id: application.id,

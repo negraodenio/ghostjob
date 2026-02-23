@@ -14,20 +14,18 @@ export async function createClient() {
                 },
                 set(name: string, value: string, options: CookieOptions) {
                     try {
+                        // In Next.js 14+, we can't set cookies in Server Components 
+                        // during the render phase. This is usually handled by middleware.
                         cookieStore.set({ name, value, ...options });
-                    } catch {
-                        // The `set` method was called from a Server Component.
-                        // This can be ignored if you have middleware refreshing
-                        // user sessions.
+                    } catch (error) {
+                        // Silently fail if we can't set cookies (expected in Server Components)
                     }
                 },
                 remove(name: string, options: CookieOptions) {
                     try {
                         cookieStore.set({ name, value: '', ...options });
-                    } catch {
-                        // The `delete` method was called from a Server Component.
-                        // This can be ignored if you have middleware refreshing
-                        // user sessions.
+                    } catch (error) {
+                        // Silently fail if we can't delete cookies
                     }
                 },
             },

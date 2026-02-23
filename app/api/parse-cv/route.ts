@@ -55,10 +55,6 @@ export async function POST(request: NextRequest) {
         const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();
 
-        if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
         // Parse PDF
         const buffer = Buffer.from(await file.arrayBuffer());
         const pdfData = await pdf(buffer);
@@ -80,27 +76,28 @@ export async function POST(request: NextRequest) {
 
         const extractedData = JSON.parse(aiResponse);
 
-        // Update profile
-        const { error: updateError } = await supabase
-            .from('profiles')
-            .update({
-                full_name: extractedData.full_name || null,
-                phone: extractedData.phone || null,
-                location: extractedData.location || null,
-                professional_summary: extractedData.professional_summary || null,
-                work_experience: extractedData.work_experience || [],
-                education: extractedData.education || [],
-                skills: extractedData.skills || [],
-                languages: extractedData.languages || [],
-                certifications: extractedData.certifications || [],
-                portfolio_url: extractedData.portfolio_url || null,
-                raw_resume_text: rawText
-            })
-            .eq('id', user.id);
+        // Update profile (if logged in)
+        if (user) {
+            const { error: updateError } = await supabase
+                .from('profiles')
+                .update({
+                    full_name: extractedData.full_name || null,
+                    phone: extractedData.phone || null,
+                    location: extractedData.location || null,
+                    professional_summary: extractedData.professional_summary || null,
+                    work_experience: extractedData.work_experience || [],
+                    education: extractedData.education || [],
+                    skills: extractedData.skills || [],
+                    languages: extractedData.languages || [],
+                    certifications: extractedData.certifications || [],
+                    portfolio_url: extractedData.portfolio_url || null,
+                    raw_resume_text: rawText
+                })
+                .eq('id', user.id);
 
-        if (updateError) {
-            console.error('[API] Database error updating profile:', updateError);
-            return NextResponse.json({ error: 'Failed to save profile data' }, { status: 500 });
+            if (updateError) {
+                console.warn('[API] Database error updating profile (non-critical):', updateError);
+            }
         }
 
         return NextResponse.json({ success: true, data: extractedData });

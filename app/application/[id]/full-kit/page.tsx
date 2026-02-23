@@ -18,7 +18,7 @@ export default function FullKitPage() {
     const id = params.id as string;
 
     // State
-    const [isFormOpen, setIsFormOpen] = useState(true);
+    const [isFormOpen, setIsFormOpen] = useState(false);
     const [progress, setProgress] = useState<{
         cv: 'pending' | 'loading' | 'done' | 'error',
         letter: 'pending' | 'loading' | 'done' | 'error',
@@ -33,12 +33,20 @@ export default function FullKitPage() {
 
     // Check for saved user info
     useEffect(() => {
-        const saved = localStorage.getItem('ghostjob_user_info');
-        if (saved) {
-            // Optional: Auto-start or just pre-fill
-            // For full kit, let's show form to confirm details first
+        try {
+            const saved = localStorage.getItem('ghostjob_user_info');
+            if (saved) {
+                const info = JSON.parse(saved) as UserInfo;
+                setIsFormOpen(false);
+                generateAll(info);
+            } else {
+                setIsFormOpen(true);
+            }
+        } catch (e) {
+            console.error('Failed to access localStorage:', e);
+            setIsFormOpen(true);
         }
-    }, []);
+    }, [id]);
 
     const handleFormSubmit = async (userInfo: UserInfo) => {
         setIsFormOpen(false);

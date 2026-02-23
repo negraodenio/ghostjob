@@ -39,17 +39,86 @@ export default function UserInfoForm({ onSubmit, isLoading }: UserInfoFormProps)
     });
 
     const [showOptional, setShowOptional] = useState(false);
+    const [isParsing, setIsParsing] = useState(false);
+
+    // LinkedIn Sync Status
+    const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced'>('idle');
 
     useEffect(() => {
-        const saved = localStorage.getItem('ghostjob_user_info');
-        if (saved) {
-            try {
+        try {
+            const saved = localStorage.getItem('ghostjob_user_info');
+            if (saved) {
                 setFormData(JSON.parse(saved));
-            } catch (e) {
-                console.error('Failed to parse saved user info', e);
             }
+
+            // Check for profile data shared from extension
+            const sharedProfile = localStorage.getItem('ghostjob_profile_sync');
+            if (sharedProfile) {
+                const profile = JSON.parse(sharedProfile);
+                setFormData(prev => ({ ...prev, ...profile }));
+                setSyncStatus('synced');
+                // Clear the sync trigger
+                localStorage.removeItem('ghostjob_profile_sync');
+            }
+        } catch (e) {
+            console.error('Failed to access localStorage', e);
         }
     }, []);
+
+    // Listen for cross-tab storage events (from extension injection)
+    useEffect(() => {
+        const handleSync = () => {
+            const sharedProfile = localStorage.getItem('ghostjob_profile_sync');
+            if (sharedProfile) {
+                try {
+                    const profile = JSON.parse(sharedProfile);
+                    setFormData(prev => ({ ...prev, ...profile }));
+                    setSyncStatus('synced');
+                    localStorage.removeItem('ghostjob_profile_sync');
+                } catch (e) { console.error(e); }
+            }
+        };
+        window.addEventListener('storage', handleSync);
+        return () => window.removeEventListener('storage', handleSync);
+    }, []);
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsParsing(true);
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch('/api/parse-cv', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) throw new Error('Failed to parse CV');
+
+            const result = await response.json();
+            const data = result.data;
+
+            setFormData(prev => ({
+                ...prev,
+                fullName: data.full_name || prev.fullName,
+                email: data.email || data.phone || prev.email, // sometimes email is phone in raw text if not careful
+                phone: data.phone || prev.phone,
+                currentTitle: data.work_experience?.[0]?.title || prev.currentTitle,
+                skills: data.skills?.join(', ') || prev.skills,
+                experience: data.work_experience?.map((w: any) => `${w.title} at ${w.company}\n${w.description}`).join('\n\n') || prev.experience,
+                education: data.education?.map((e: any) => `${e.degree}, ${e.institution}`).join('\n') || prev.education,
+            }));
+            setShowOptional(true);
+        } catch (error) {
+            console.error('Error parsing CV:', error);
+            alert('Failed to parse CV. Try manual entry.');
+        } finally {
+            setIsParsing(false);
+        }
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -61,7 +130,11 @@ export default function UserInfoForm({ onSubmit, isLoading }: UserInfoFormProps)
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        localStorage.setItem('ghostjob_user_info', JSON.stringify(formData));
+        try {
+            localStorage.setItem('ghostjob_user_info', JSON.stringify(formData));
+        } catch (e) {
+            console.error('Failed to save to localStorage', e);
+        }
         onSubmit(formData);
     };
 
@@ -70,12 +143,59 @@ export default function UserInfoForm({ onSubmit, isLoading }: UserInfoFormProps)
             <div className="bg-bg-card border border-gray-800 rounded-2xl w-full max-w-2xl shadow-2xl animate-in fade-in zoom-in duration-300 my-8">
                 <div className="p-6 md:p-8">
                     <div className="text-center mb-8">
-                        <h2 className="text-3xl font-bold mb-2">Let&apos;s Build Your Perfect CV</h2>
-                        <p className="text-text-secondary">
-                            We&apos;ll use this info to tailor your resume specifically for this job.
+                        <h2 className="text-3xl font-bold mb-2">Let&apos;s Build Your Perfect Kit</h2>
+                        <p className="text-text-secondary mb-6">
+                            Choose how you&apos;d like to provide your information.
                             <br />
                             <span className="text-xs opacity-70">Your data is saved locally and never shared.</span>
                         </p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSyncStatus('syncing');
+                                    setTimeout(() => {
+                                        if (syncStatus !== 'synced') setSyncStatus('idle');
+                                    }, 5000);
+                                }}
+                                className={`flex flex-col items-center p-4 rounded-xl border transition group ${syncStatus === 'synced' ? 'border-success bg-success/10' : 'border-gray-800 bg-bg-primary hover:border-primary'}`}
+                            >
+                                <span className="text-2xl mb-2">{syncStatus === 'synced' ? '✅' : '🔗'}</span>
+                                <span className="text-sm font-bold">{syncStatus === 'synced' ? 'LinkedIn Synced' : 'Sync LinkedIn'}</span>
+                                <span className="text-[10px] text-text-secondary">
+                                    {syncStatus === 'syncing' ? 'Open Extension...' : 'Via Extension'}
+                                </span>
+                            </button>
+                            <div className="relative">
+                                <input
+                                    type="file"
+                                    id="cv-upload"
+                                    className="hidden"
+                                    accept=".pdf"
+                                    onChange={handleFileUpload}
+                                />
+                                <button
+                                    type="button"
+                                    disabled={isParsing}
+                                    onClick={() => document.getElementById('cv-upload')?.click()}
+                                    className="w-full flex flex-col items-center p-4 rounded-xl border border-gray-800 bg-bg-primary hover:border-primary transition group disabled:opacity-50"
+                                >
+                                    <span className="text-2xl mb-2">{isParsing ? '⏳' : '📄'}</span>
+                                    <span className="text-sm font-bold">{isParsing ? 'Parsing...' : 'Import CV'}</span>
+                                    <span className="text-[10px] text-text-secondary">PDF (AI Powered)</span>
+                                </button>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowOptional(true)}
+                                className="flex flex-col items-center p-4 rounded-xl border border-primary bg-primary/10 transition group"
+                            >
+                                <span className="text-2xl mb-2">✍️</span>
+                                <span className="text-sm font-bold">Manual Entry</span>
+                                <span className="text-[10px] text-text-secondary">Fill below</span>
+                            </button>
+                        </div>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">

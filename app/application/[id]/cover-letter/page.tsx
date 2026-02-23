@@ -71,17 +71,24 @@ export default function CoverLetterPage() {
 
     // Load user info on mount to check if we need to show form
     useEffect(() => {
-        const saved = localStorage.getItem('ghostjob_user_info');
-        if (saved) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            setUserInfo(JSON.parse(saved) as UserInfo);
-            setIsFormOpen(false);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            generateLetter(JSON.parse(saved) as UserInfo, 'professional');
-        } else {
-            setIsFormOpen(true);
-        }
-    }, [generateLetter]);
+        const checkSavedInfo = async () => {
+            try {
+                const saved = localStorage.getItem('ghostjob_user_info');
+                if (saved) {
+                    const info = JSON.parse(saved) as UserInfo;
+                    setUserInfo(info);
+                    setIsFormOpen(false);
+                    generateLetter(info, tone);
+                } else {
+                    setIsFormOpen(true);
+                }
+            } catch (e) {
+                console.error('Failed to access localStorage:', e);
+                setIsFormOpen(true);
+            }
+        };
+        checkSavedInfo();
+    }, [id]); // Only run on mount or ID change
 
     const handleFormSubmit = (data: UserInfo) => {
         setIsFormOpen(false);

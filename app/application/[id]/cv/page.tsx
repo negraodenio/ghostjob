@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import UserInfoForm from '@/components/UserInfoForm';
@@ -46,10 +46,29 @@ export default function CVPage() {
     const params = useParams();
     const id = params.id as string;
 
-    const [isFormOpen, setIsFormOpen] = useState(true);
+    const [isFormOpen, setIsFormOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [cvData, setCvData] = useState<CVData | null>(null);
+    const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
     const cvRef = useRef<HTMLDivElement>(null);
+
+    // Safe localStorage access & auto-generation
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem('ghostjob_user_info');
+            if (saved) {
+                const info = JSON.parse(saved);
+                setUserInfo(info);
+                setIsFormOpen(false);
+                handleFormSubmit(info);
+            } else {
+                setIsFormOpen(true);
+            }
+        } catch (e) {
+            console.error('Failed to access localStorage:', e);
+            setIsFormOpen(true);
+        }
+    }, [id]); // Only run on mount or ID change
 
     const handleFormSubmit = async (userInfo: UserInfo) => {
         setIsFormOpen(false);
@@ -212,12 +231,12 @@ ${cvData.education?.map((edu) => `${edu.degree}, ${edu.institution} (${edu.year}
                         {/* CV Header */}
                         <div className="border-b-2 border-gray-900 pb-6 mb-6">
                             <h1 className="text-4xl font-extrabold uppercase tracking-tight mb-2 text-gray-900">
-                                {localStorage.getItem('ghostjob_user_info') ? (JSON.parse(localStorage.getItem('ghostjob_user_info')!) as UserInfo).fullName : 'Candidate Name'}
+                                {userInfo?.fullName || 'Candidate Name'}
                             </h1>
                             <div className="flex flex-wrap gap-4 text-sm text-gray-600 font-medium">
-                                <span>{localStorage.getItem('ghostjob_user_info') ? (JSON.parse(localStorage.getItem('ghostjob_user_info')!) as UserInfo).email : 'email@example.com'}</span>
+                                <span>{userInfo?.email || 'email@example.com'}</span>
                                 <span>•</span>
-                                <span>{localStorage.getItem('ghostjob_user_info') ? (JSON.parse(localStorage.getItem('ghostjob_user_info')!) as UserInfo).phone : 'Phone'}</span>
+                                <span>{userInfo?.phone || 'Phone'}</span>
                             </div>
                         </div>
 

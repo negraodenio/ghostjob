@@ -17,7 +17,7 @@ export default function TermsPage() {
 
             <div className="container mx-auto px-6 py-20 max-w-4xl">
                 <h1 className="text-5xl font-black mb-4">Terms of Service</h1>
-                <p className="text-text-secondary mb-12">Last updated: June 2025</p>
+                <p className="text-text-secondary mb-12">Last updated: February 2026</p>
 
                 <div className="space-y-12">
                     <section>
@@ -30,14 +30,16 @@ export default function TermsPage() {
                     <section>
                         <h2 className="text-2xl font-bold mb-4">2. Description of Service</h2>
                         <div className="space-y-4 text-text-secondary leading-relaxed">
-                            <p>GhostJob is an AI-powered tool that:</p>
+                            <p>GhostJob is a job market transparency platform that:</p>
                             <ul className="list-disc pl-6 space-y-2">
-                                <li>Analyzes job descriptions to detect potential ghost jobs</li>
-                                <li>Generates tailored CVs, cover letters, and interview prep</li>
-                                <li>Provides a community Ghost Wall for sharing suspicious postings</li>
+                                <li>Analyzes job descriptions to calculate a <strong>Ghost Score</strong> and <strong>Hiring Integrity Score</strong> for companies</li>
+                                <li>Tracks real-world application outcomes (response, interview, offer, rejection) submitted voluntarily by users</li>
+                                <li>Publishes anonymised, aggregated company transparency rankings and market reports</li>
+                                <li>Generates personalized application materials: CVs, cover letters, and interview preparation — each tailored to the specific job analyzed</li>
+                                <li>Provides a community Ghost Wall for surfacing suspicious job postings</li>
                             </ul>
                             <p>
-                                The Ghost Score is a probability estimate, not a guarantee. We cannot confirm with 100% certainty whether any job is real or fake. Use the information as one factor in your job search decisions.
+                                All scores (Ghost Score, Hiring Integrity Score) are probability estimates based on pattern analysis and community-reported outcomes. They are <strong>not legal determinations</strong> and should be used as one signal among many in your job search decisions.
                             </p>
                         </div>
                     </section>
@@ -72,13 +74,27 @@ export default function TermsPage() {
                     </section>
 
                     <section>
-                        <h2 className="text-2xl font-bold mb-4">5. Content Ownership</h2>
+                        <h2 className="text-2xl font-bold mb-4">5. Content &amp; Data Ownership</h2>
                         <ul className="list-disc pl-6 space-y-2 text-text-secondary leading-relaxed">
                             <li>You own all CVs, cover letters, and content generated for you</li>
                             <li>Job descriptions you paste remain the property of their original authors — we only process them for analysis</li>
+                            <li>Outcome data you report (responses, interviews, offers) is used only in anonymised, aggregated form to improve scoring accuracy and build company transparency rankings</li>
                             <li>Ghost Wall posts are public and may be viewed by anyone</li>
-                            <li>We retain the right to use anonymized, aggregated data for research and product improvement</li>
+                            <li>We retain the right to use anonymised, aggregated data for research, product improvement, and published market reports</li>
                         </ul>
+                    </section>
+
+                    <section>
+                        <h2 className="text-2xl font-bold mb-4">5.5 Outcome Data &amp; Privacy</h2>
+                        <div className="space-y-4 text-text-secondary leading-relaxed">
+                            <p>Outcome tracking (reporting what happened after you applied) is opt-in. When you report an outcome:</p>
+                            <ul className="list-disc pl-6 space-y-2">
+                                <li>Your individual data is <strong>never shared with employers</strong> or third parties</li>
+                                <li>Company-level data is only published when a minimum of 10 applications have been tracked for that company (anonymity threshold)</li>
+                                <li>You can delete your outcome data at any time from your account settings</li>
+                                <li>We are GDPR compliant. Upon account deletion, all personal data is removed within 30 days</li>
+                            </ul>
+                        </div>
                     </section>
 
                     <section>
@@ -112,7 +128,7 @@ export default function TermsPage() {
                     <section>
                         <h2 className="text-2xl font-bold mb-4">10. Contact</h2>
                         <p className="text-text-secondary leading-relaxed">
-                            Questions? Email us at <a href="mailto:hello@ghostjob.app" className="text-primary hover:underline">hello@ghostjob.app</a>
+                            Questions? Email us at <a href="mailto:hello@ghostjob.app" className="text-primary hover:underline">hello@ghostjob.app</a>. For B2B or partnership enquiries: <a href="mailto:intelligence@ghostjob.app" className="text-primary hover:underline">intelligence@ghostjob.app</a>
                         </p>
                     </section>
                 </div>

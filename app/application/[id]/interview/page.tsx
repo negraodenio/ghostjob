@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import html2canvas from 'html2canvas';
@@ -64,6 +64,13 @@ export default function InterviewPrepPage() {
     const [expandedQuestions, setExpandedQuestions] = useState<Record<string, boolean>>({});
 
     const prepRef = useRef<HTMLDivElement>(null);
+
+    // Auto-generate on mount if not already generated
+    useEffect(() => {
+        if (!prepData) {
+            generatePrep();
+        }
+    }, [id]); // Trigger on ID change
 
     const generatePrep = async () => {
         setIsLoading(true);
