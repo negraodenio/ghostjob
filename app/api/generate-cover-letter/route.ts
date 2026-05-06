@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
         console.log(`[API] Generating Cover Letter (Tone: ${tone})...`);
 
         // 3. Call OpenAI
-        let aiResponse = await getLLMResponse(
+        const aiResponse = await getLLMResponse(
             createConversation(fullPrompt, "Generate the JSON."),
             { temperature: 0.7, maxTokens: 1500 }
         );
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
                     .trim();
                 const jsonMatch = cleaned.match(/\{[\s\S]*\}/)?.[0] || cleaned;
                 letterData = JSON.parse(jsonMatch);
-            } catch (retryError) {
+            } catch (_retryError) {
                 return NextResponse.json(
                     { error: 'Falha ao processar a resposta da IA. O formato da carta gerado foi inválido. Tente novamente em instantes.' },
                     { status: 500 }

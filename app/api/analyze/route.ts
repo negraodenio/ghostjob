@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getLLMResponse, createConversation } from '@/lib/llm';
+import { createConversation } from '@/lib/llm';
 import { checkRateLimit, incrementAnalysisCount } from '@/lib/rate-limit';
 import crypto from 'crypto';
 
@@ -26,352 +26,10 @@ interface JobQuality {
     transparency: number;
 }
 
-interface GhostAnalysisResult {
-    company_name: string;
-    job_title: string;
-    confidence_score: number;
-    posting_age_days: number;
-    ghost_score: number;
-    ghost_verdict: 'legit' | 'sus' | 'ghost' | 'certified_ghost';
-    ghost_headline: string;
-    ghost_roast: string;
-    top_reasons: string[];
-    scoring_breakdown: {
-        base_score: number;
-        age_multiplier: number;
-        red_flags_total_points: number;
-        green_flags_discount: number;
-        cross_validation_penalty: number;
-        final_score: number;
-    };
-    job_quality: JobQuality & { overall: number };
-    deep_analysis: {
-        content_quality: string;
-        risk_factors: string;
-        credibility_signals: string;
-        market_context?: string;
-    };
-    recommendation: {
-        action: 'apply_now' | 'research_first' | 'skip' | 'avoid' | 'report_scam';
-        next_steps: string;
-        warning_level: 'safe' | 'caution' | 'danger' | 'critical';
-        time_investment?: number;
-    };
-    red_flags: RedFlag[];
-    green_flags: GreenFlag[];
-    combo_flags: {
-        detected: string[];
-        auto_verdict_triggered: boolean;
-        explanation: string;
-    };
-    temporal_analysis?: {
-        posted_days_ago: number;
-        age_category: string;
-        repost_detected: boolean;
-        repost_count: number;
-    };
-}
+// Unused interface removed
 
-const GHOST_ANALYSIS_PROMPT = `Analyze this job description for signs of being a ghost job with extreme precision.
-
-# CONTEXT (CRITICAL HINTS)
-- Job Title: {title_hint}
-- Company: {company_hint}
-- Time Posted: {posted_hint} ← PARSE THIS for age calculation
-
-# MISSION
-Detect impossible requirements, vague language, temporal red flags, phishing, and "Evergreen Fake Hiring" patterns.
-
----
-
-## STEP 1: TEMPORAL ANALYSIS (CRITICAL)
-
-**Parse {posted_hint} to extract posting age in days.**
-
-Example inputs:
-- "2 days ago" → 2 days
-- "Posted 3 months ago" → ~90 days
-- "6w ago" → ~42 days
-
-**Apply Age Multiplier:**
-\`\`\`
-0-7 days:    1.0x (fresh, normal)
-8-30 days:   1.1x (slightly stale)
-31-60 days:  1.4x (suspicious)
-61-90 days:  1.7x (very suspicious)  
-90+ days:    2.2x (EXTREME red flag)
-\`\`\`
-
-If "reposted" appears → add +0.3x to multiplier
-
----
-
-## STEP 2: TECH REALITY CHECK (KNOWLEDGE BASE)
-
-**Technology Age Reference:**
-- React: 2013 | Vue: 2014 | Flutter: 2017 | Swift: 2014
-- Kubernetes: 2014 | TypeScript: 2012 | Next.js: 2016
-- GPT/LLMs: 2022 | Rust: 2010 | Go: 2009
-
-**RULE:**
-IF (required_years > tech_age) → **WEIGHT 5 (CRITICAL)** "Impossible Requirements"
-
----
-
-## STEP 3: STARTUP CONTEXT DETECTION
-
-IF detected as:
-- < 30 employees OR
-- "Seed/Series A" OR  
-- "Early Stage Startup" OR
-- Founded < 2 years ago
-
-**THEN:**
-- Reduce weight of "Vague Responsibilities" by 50%
-- Reduce weight of "Unicorn Syndrome" by 30%
-- Startups naturally have fluid roles
-
----
-
-## STEP 4: RED FLAGS DETECTION
-
-### 🔴 WEIGHT 5 (CRITICAL - 20pts each)
-
-1. **Impossible Tech Requirements**
-   - Required experience > technology age
-   
-2. **Phishing Signals**
-   - SSN/ID requested before interview
-   - Personal banking info upfront
-   
-3. **Extreme Title/Description Mismatch**
-   - "Junior" title but requires "10+ years"
-   - "Entry-level" but needs "Lead 5+ people"
-
-4. **Ancient Posting**
-   - 90+ days old (auto-detected from {posted_hint})
-   
-5. **Payment/Fee Required**
-   - Training fee
-   - "Investment required"
-
----
-
-### 🟠 WEIGHT 3 (HIGH - 15pts each)
-
-6. **Missing Compensation**
-   - No salary range at all
-   
-7. **Unicorn Syndrome**
-   - 8+ unrelated skills required
-   - Expert in competing frameworks (React + Angular + Vue)
-
-8. **Salary Absurdity**
-   - Range > 3x difference ("$40k-$150k")
-   - Senior title with junior pay
-
-9. **Stale Posting**
-   - 60-89 days old
-   
-10. **Multiple Reposts**
-    - Text mentions "reposted" 2+ times
-    
-11. **No Company Presence**
-    - No verifiable website
-    - No LinkedIn page
-    - Zero online footprint
-
-12. **Staffing Agency Vagueness**
-    - "Hiring for client" with zero client details
-
----
-
-### 🟡 WEIGHT 2 (MEDIUM - 10pts each)
-
-13. **Vague Responsibilities**
-    - "Various tasks as assigned"
-    - Only generic bullets
-    
-14. **Buzzword Overload**
-    - 5+ of: rockstar, ninja, guru, disruptive, synergy
-
-15. **Title/Description Contradiction**
-    - Title says "Remote" but description requires relocation
-    - Different seniority levels
-
-16. **No Interview Process**
-    - Zero mention of hiring steps
-
-17. **Generic Company Bio**
-    - Copy-paste boilerplate
-
----
-
-### 🟢 WEIGHT 1 (LOW - 5pts each)
-
-18. **Robotic/Template Tone**
-    - Excessive passive voice
-    - Repetitive sentence structures
-
-19. **Cliché Overload**
-    - "Fast-paced environment"
-    - "We're like a family"
-    - "Wear many hats"
-
-20. **No Team/Manager Named**
-    - Generic "HR team" contact
-    - noreply@ email
-
----
-
-## STEP 5: GREEN FLAGS (Subtract points)
-
-### ✅ WEIGHT -15pts each
-
-1. **Transparent Compensation**
-   - Specific salary range listed
-   
-2. **Named Personnel**
-   - Hiring manager name + LinkedIn
-   
-3. **Specific Tech Stack**
-   - Exact versions ("React 18, TypeScript 5.2")
-   
-4. **Detailed Interview Process**
-   - "3 rounds: technical, behavioral, cultural"
-
-5. **Recent Company News**
-   - Verifiable recent event mentioned
-
----
-
-## STEP 6: COMBO DETECTION (Auto-Verdicts)
-
-**These combinations BYPASS normal scoring:**
-
-### 🚨 INSTANT CERTIFIED_GHOST:
-- Missing salary + 90+ days old + vague duties
-- Impossible requirements + no company presence + 60+ days
-- Phishing signals + third-party redirect
-
-### ⚠️ INSTANT GHOST (set score to 75):
-- No salary + unicorn syndrome + 60+ days stale
-- Staffing agency + no client + 45+ days
-
-### 🆘 SCAM WARNING (special flag):
-- Payment required + "work from home" emphasis
-- Personal banking info before offer
-
----
-
-## STEP 7: CROSS-VALIDATION
-
-Check for internal contradictions:
-- Title seniority ≠ description seniority → +15pts
-- Location contradiction (remote vs relocate) → +15pts
-- Salary in title ≠ description → +10pts
-
----
-
-## STEP 8: FINAL SCORING
-\`\`\`
-BASE_SCORE = Sum(RedFlagWeights) - Sum(GreenFlagWeights)
-FINAL_SCORE = min(100, max(0, BASE_SCORE × AgeMultiplier))
-\`\`\`
-
-### VERDICT THRESHOLDS:
-\`\`\`
-0-25:   legit (apply with confidence)
-26-50:  sus (research company first)
-51-75:  ghost (probably fake, low priority)
-76-100: certified_ghost (definitely fake, avoid)
-\`\`\`
-
----
-
-## STEP 9: JSON OUTPUT
-\`\`\`json
-{
-  "company_name": "string",
-  "job_title": "string",
-  "posting_age_days": 0,
-  "ghost_score": 0-100,
-  "ghost_verdict": "legit|sus|ghost|certified_ghost",
-  "ghost_headline": "8-12 word punchy summary",
-  "ghost_roast": "2-3 sentences. Witty for ghosts, encouraging for legit",
-  "top_reasons": ["Reason 1", "Reason 2", "Reason 3"],
-  
-  "scoring_breakdown": {
-    "base_score": 0,
-    "age_multiplier": 1.0,
-    "red_flags_total": 0,
-    "green_flags_discount": 0,
-    "final_score": 0
-  },
-  
-  "job_quality": {
-    "clarity": 0-100,
-    "realism": 0-100,
-    "transparency": 0-100,
-    "overall": 0-100
-  },
-  
-  "deep_analysis": {
-    "content_quality": "2-3 sentences on authenticity",
-    "risk_factors": "Top 3 red flags found",
-    "credibility_signals": "Positive indicators (if any)"
-  },
-  
-  "recommendation": {
-    "action": "apply_now|research_first|skip|avoid",
-    "next_steps": "Specific actionable advice",
-    "warning_level": "low|medium|high|critical"
-  },
-  
-  "red_flags": [
-    {
-      "title": "Flag name",
-      "explanation": "Why triggered",
-      "weight": 1-5,
-      "severity": "critical|high|medium|low"
-    }
-  ],
-  
-  "green_flags": [
-    {
-      "title": "Positive signal",
-      "explanation": "What was good",
-      "weight": 1-5
-    }
-  ],
-  
-  "combo_flags": {
-    "detected": ["combo_type"],
-    "auto_verdict_triggered": false,
-    "explanation": "Why combo is dangerous"
-  }
-}
-\`\`\`
-
----
-
-## TONE GUIDELINES
-
-**For legit jobs (0-25):**
-- Encouraging but realistic
-- "This looks solid. Here's what stood out..."
-
-**For sus jobs (26-50):**
-- Balanced, analytical
-- "Some red flags. Here's what to verify..."
-
-**For ghost jobs (51-75):**
-- Direct but helpful
-- "High probability of being fake. Here's why..."
-
-**For certified ghost (76-100):**
-- Protective, firm
-- "This is a ghost job. Don't waste your time."
+// Unused prompt constant removed
+ is a ghost job. Don't waste your time."
 
 `;
 
@@ -386,15 +44,27 @@ export async function POST(request: NextRequest) {
         // Check if we need to fetch from URL
         if (finalJobDescription.trim().length < 200 && job_url) {
             try {
+                // Normalize LinkedIn URL (handle search/collection URLs)
+                let targetUrl = job_url;
+                if (job_url.includes('linkedin.com')) {
+                    const urlObj = new URL(job_url);
+                    const currentJobId = urlObj.searchParams.get('currentJobId');
+                    if (currentJobId) {
+                        targetUrl = `https://www.linkedin.com/jobs/view/${currentJobId}/`;
+                        console.log('[API] Normalized LinkedIn URL to direct job view:', targetUrl);
+                    }
+                }
+
                 // Encode the URL to handle special characters correctly
-                const encodedUrl = encodeURIComponent(job_url);
-                console.log('[API] Fetching job description from URL using Jina:', job_url);
+                const encodedUrl = encodeURIComponent(targetUrl);
+                console.log('[API] Fetching job description from URL using Jina:', targetUrl);
 
                 const response = await fetch(`https://r.jina.ai/${encodedUrl}`, {
                     headers: {
                         'Accept': 'text/plain', // Return markdown text
+                        'X-No-Cache': 'true',   // Optional: bypass Jina cache if needed
                     },
-                    signal: AbortSignal.timeout(10000) // Reduced to 10s to give room for LLM
+                    signal: AbortSignal.timeout(15000) // Increased to 15s for better reliability
                 });
 
                 if (response.ok) {
@@ -435,70 +105,58 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Call LLM for analysis
-        console.log('[API] Starting ghost job analysis...');
-        const fullPrompt = GHOST_ANALYSIS_PROMPT
-            .replace('{title_hint}', body.title_hint || 'None')
-            .replace('{company_hint}', body.company_hint || 'None')
-            .replace('{posted_hint}', body.posted_hint || 'Just now');
+        // 4. Extract Features via Decision Engine (LLM as Feature Extractor)
+        const { extractFeatures } = await import('@/lib/analysis/feature-extractor');
+        const { calculateGhostScore } = await import('@/lib/analysis/scoring-engine');
 
-        let aiResponse = await getLLMResponse(
-            createConversation(fullPrompt, finalJobDescription),
-            { temperature: 0.7, maxTokens: 4000 }
-        );
+        console.log('[API] Starting feature extraction...');
+        const features = await extractFeatures(finalJobDescription, {
+            title: body.title_hint,
+            company: body.company_hint,
+            posted: body.posted_hint
+        });
 
-        console.log('[API] Raw AI response:', aiResponse);
+        console.log('[API] Extracted Features:', features);
 
-        // Clean response (extract JSON object)
-        const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-        aiResponse = jsonMatch ? jsonMatch[0] : aiResponse;
+        // 5. Calculate Score Deterministically
+        const scoringData = calculateGhostScore(features);
 
-        // Parse AI response
-        let analysisResult: GhostAnalysisResult;
-        try {
-            // Check if AI explicitly rejected it (e.g. login page detected)
-            if (aiResponse.includes('NOT A JOB DESCRIPTION') || aiResponse.includes('LOGIN PAGE')) {
-                return NextResponse.json(
-                    { error: 'Facepalm! 🤦‍♂️ O link enviado parece ser uma página de login ou conteúdo privado. Tente copiar e colar a descrição manualmente na extensão.' },
-                    { status: 400 }
-                );
+        const analysisResult = {
+            company_name: features.extracted_company_name,
+            job_title: features.extracted_job_title,
+            ghost_score: scoringData.ghost_score,
+            ghost_verdict: scoringData.ghost_verdict as 'legit' | 'sus' | 'ghost' | 'certified_ghost',
+            ghost_headline: scoringData.ghost_headline,
+            ghost_roast: `Based on a deterministic analysis of ${Object.keys(features).length} variables.`,
+            red_flags: scoringData.red_flags,
+            green_flags: scoringData.green_flags,
+            job_quality: { clarity: 100 - (features.vague_language_score * 100), realism: 100, transparency: features.has_salary ? 100 : 0, overall: 100 - scoringData.ghost_score },
+            recommendation: { action: 'research_first' as const, next_steps: scoringData.combo_flags.explanation, warning_level: 'caution' as const },
+            posting_age_days: features.job_age_days,
+            confidence_score: 90, // Default confidence for deterministic analysis
+            scoring_breakdown: {
+                base_score: scoringData.ghost_score,
+                age_multiplier: 1,
+                red_flags_total_points: 0,
+                green_flags_discount: 0,
+                cross_validation_penalty: 0,
+                final_score: scoringData.ghost_score
+            },
+            deep_analysis: {
+                content_quality: "Deterministic extraction complete.",
+                risk_factors: scoringData.red_flags.map(f => f.title).join(', '),
+                credibility_signals: scoringData.green_flags.map(f => f.title).join(', ')
+            },
+            combo_flags: scoringData.combo_flags,
+            temporal_analysis: {
+                posted_days_ago: features.job_age_days,
+                age_category: 'normal',
+                repost_detected: features.repost_count > 0,
+                repost_count: features.repost_count
             }
-
-            analysisResult = JSON.parse(aiResponse);
-        } catch (parseError) {
-            console.error('[API] Failed to parse AI response:', parseError);
-            console.error('[API] Response that failed parsing:', aiResponse);
-
-            // If it's not JSON but we can see a verdict, try to be helpful
-            if (aiResponse.length < 500) {
-                return NextResponse.json(
-                    { error: `Ocorreu um erro na análise: ${aiResponse.substring(0, 100)}... Tente novamente.` },
-                    { status: 500 }
-                );
-            }
-
-            return NextResponse.json(
-                { error: 'Falha ao processar a resposta da IA. Tente novamente em instantes.' },
-                { status: 500 }
-            );
-        }
-
-        // Normalize ghost_verdict to match database constraints
-        const normalizeVerdict = (verdict: string, score: number): 'legit' | 'sus' | 'ghost' | 'certified_ghost' => {
-            const v = (verdict || '').toLowerCase().trim().replace(/\s+/g, '_');
-
-            if (['certified_ghost', 'ghost', 'sus', 'legit'].includes(v)) {
-                return v as 'legit' | 'sus' | 'ghost' | 'certified_ghost';
-            }
-
-            // Fallback mapping in case LLM returns something else
-            if (v.includes('certified') || v.includes('fake') || score > 85) return 'certified_ghost';
-            if (v.includes('ghost') || score > 60) return 'ghost';
-            if (v.includes('sus') || v.includes('suspicious') || score > 30) return 'sus';
-            return 'legit';
         };
 
-        analysisResult.ghost_verdict = normalizeVerdict(analysisResult.ghost_verdict, analysisResult.ghost_score);
+        console.log('[API] Deterministic Scoring Complete', { score: analysisResult.ghost_score, verdict: analysisResult.ghost_verdict });
 
         // Save to database
         // Ensure profile exists if user is logged in (to satisfy foreign key constraint)
@@ -624,7 +282,11 @@ export async function POST(request: NextRequest) {
             upvotes: 0,
         };
 
-        const { data: application, error: dbError } = await supabase
+        // Use admin client to bypass RLS for anonymous scans (user_id = null)
+        const { createAdminClient } = await import('@/lib/supabase/admin');
+        const adminSupabase = createAdminClient();
+
+        const { data: application, error: dbError } = await adminSupabase
             .from('applications')
             .insert(applicationData)
             .select()
