@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+// createClient removed
 import { getLLMResponse, createConversation } from '@/lib/llm';
 
 export const runtime = 'nodejs';
