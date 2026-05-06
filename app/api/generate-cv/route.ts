@@ -140,19 +140,29 @@ export async function POST(request: NextRequest) {
     );
 
     // 4. Parse Response
-    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-    aiResponse = jsonMatch ? jsonMatch[0] : aiResponse;
-
     let cvData;
     try {
-      cvData = JSON.parse(aiResponse);
+      // Robust JSON extraction
+      const jsonContent = aiResponse.match(/\{[\s\S]*\}/)?.[0] || aiResponse;
+      cvData = JSON.parse(jsonContent);
     } catch (e) {
       console.error('[API] JSON Parse Error:', e);
       console.error('[API] Raw Response:', aiResponse);
-      return NextResponse.json(
-        { error: 'Failed to generate valid JSON for CV' },
-        { status: 500 }
-      );
+      
+      // Fallback: Try to clean the string if it has markdown blocks
+      try {
+        const cleaned = aiResponse
+          .replace(/```json/g, '')
+          .replace(/```/g, '')
+          .trim();
+        const jsonMatch = cleaned.match(/\{[\s\S]*\}/)?.[0] || cleaned;
+        cvData = JSON.parse(jsonMatch);
+      } catch (retryError) {
+        return NextResponse.json(
+          { error: 'Falha ao processar a resposta da IA. O formato do CV gerado foi inválido. Tente novamente em instantes.' },
+          { status: 500 }
+        );
+      }
     }
 
     return NextResponse.json(cvData);
