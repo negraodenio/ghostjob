@@ -60,7 +60,7 @@ export default async function GhostWallPage() {
                         applications.map((app, i) => (
                             <Link
                                 key={app.id}
-                                href={`/ghost/${app.id}`}
+                                href={`/analyze/${app.id}`}
                                 className="block bg-bg-card p-8 rounded-xl border border-gray-800 hover:border-danger transition group"
                             >
                                 <div className="flex items-start justify-between mb-4">

@@ -8,10 +8,6 @@ interface CorrelationRow {
     avg_days_to_response: number;
 }
 
-interface CompanyRow {
-    name: string;
-    hiring_integrity_score?: number;
-}
 
 interface JobRow {
     id: string;
@@ -467,7 +463,7 @@ export default async function HomePage() {
 
                                         <div className="flex justify-between items-center text-sm text-text-secondary border-t border-white/5 pt-4">
                                             <span>{new Date(job.created_at).toLocaleDateString()}</span>
-                                            <Link href={`/jobs/${job.id}`} className="text-primary hover:underline text-xs font-semibold">View →</Link>
+                                            <Link href={`/analyze/${job.id}`} className="text-primary hover:underline text-xs font-semibold">View →</Link>
                                         </div>
                                     </div>
                                 </div>
