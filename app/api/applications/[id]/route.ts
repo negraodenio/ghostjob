@@ -8,9 +8,10 @@ export async function GET(
     { params }: { params: { id: string } }
 ) {
     try {
-        const supabase = await createClient();
+        const { createAdminClient } = await import('@/lib/supabase/admin');
+        const adminSupabase = createAdminClient();
 
-        const { data: application, error } = await supabase
+        const { data: application, error } = await adminSupabase
             .from('applications')
             .select('*')
             .eq('id', params.id)
@@ -18,7 +19,7 @@ export async function GET(
 
         if (error || !application) {
             return NextResponse.json(
-                { error: 'Application not found' },
+                { error: 'Analysis not found' },
                 { status: 404 }
             );
         }

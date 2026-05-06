@@ -80,10 +80,11 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const supabase = await createClient();
+        const { createAdminClient } = await import('@/lib/supabase/admin');
+        const adminSupabase = createAdminClient();
 
         // 1. Fetch analysis data
-        const { data: analysis, error: fetchError } = await supabase
+        const { data: analysis, error: fetchError } = await adminSupabase
             .from('applications')
             .select('*')
             .eq('id', analysisId)
