@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
                     .trim();
                 const jsonMatch = cleaned.match(/\{[\s\S]*\}/)?.[0] || cleaned;
                 letterData = JSON.parse(jsonMatch);
-            } catch (_retryError) {
+            } catch {
                 return NextResponse.json(
                     { error: 'Falha ao processar a resposta da IA. O formato da carta gerado foi inválido. Tente novamente em instantes.' },
                     { status: 500 }

@@ -1,37 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createConversation } from '@/lib/llm';
 import { checkRateLimit, incrementAnalysisCount } from '@/lib/rate-limit';
 import crypto from 'crypto';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-interface RedFlag {
-    title: string;
-    explanation: string;
-    severity?: 'high' | 'medium' | 'low';
-    weight: number;
-}
-
-interface GreenFlag {
-    title: string;
-    explanation: string;
-    weight?: number;
-}
-
-interface JobQuality {
-    clarity: number;
-    realism: number;
-    transparency: number;
-}
+// Unused interfaces removed
 
 // Unused interface removed
 
 // Unused prompt constant removed
- is a ghost job. Don't waste your time."
-
-`;
 
 export async function POST(request: NextRequest) {
     try {
